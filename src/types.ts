@@ -65,6 +65,8 @@ export interface Bottle {
 export interface Cellar {
   id: string
   name: string
+  // Emails of the people who share the cellar. Absent when it is kept in the browser.
+  members?: string[]
 }
 
 export interface CellarData {

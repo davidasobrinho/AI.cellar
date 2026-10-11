@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// A cellar and its bottles can be read and changed only by its members,
+// identified by the verified email of their Google account.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified;
+    }
+
+    match /cellars/{cellarId} {
+      allow create: if signedIn() && request.auth.token.email in request.resource.data.members;
+      allow read, update, delete: if signedIn() && request.auth.token.email in resource.data.members;
+
+      match /bottles/{bottleId} {
+        allow read, write: if signedIn()
+          && request.auth.token.email in get(/databases/$(database)/documents/cellars/$(cellarId)).data.members;
+      }
+    }
+  }
+}

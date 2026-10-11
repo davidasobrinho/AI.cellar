@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
+import type { User } from 'firebase/auth'
 import { BottleForm } from './BottleForm'
+import { auth, firebaseEnabled } from './lib/firebase'
 import { BAND_LABELS, cellarValue, euros, priceBand } from './lib/price'
-import { loadData, newId, saveData } from './lib/store'
+import { useFirebaseStore, useLocalStore } from './lib/store'
+import type { Store } from './lib/store'
 import { drinkingWindow, openTonight } from './lib/windows'
 import type { WindowStatus } from './lib/windows'
 import { RATINGS } from './types'
-import type { Bottle, CellarData, Rating } from './types'
+import type { Bottle, Rating } from './types'
 
 type View = { name: 'list' } | { name: 'form'; bottle: Bottle | null } | { name: 'detail'; id: string }
 
@@ -25,13 +29,45 @@ function title(b: Bottle) {
 }
 
 export default function App() {
-  const [data, setData] = useState<CellarData>(loadData)
+  return firebaseEnabled ? <SharedApp /> : <LocalApp />
+}
+
+function LocalApp() {
+  return <CellarApp store={useLocalStore()} />
+}
+
+function SharedApp() {
+  // undefined while Firebase is still working out who is signed in.
+  const [user, setUser] = useState<User | null | undefined>(undefined)
+  useEffect(() => onAuthStateChanged(auth!, setUser), [])
+
+  if (user === undefined) return <main className="empty">Loading…</main>
+  if (user === null || !user.email) {
+    return (
+      <main className="signin">
+        <h1>Private Sommelier</h1>
+        <p className="meta">Sign in to see the cellars shared with you.</p>
+        <button className="primary" onClick={() => void signInWithPopup(auth!, new GoogleAuthProvider())}>
+          Sign in with Google
+        </button>
+      </main>
+    )
+  }
+  return <SignedInApp email={user.email} />
+}
+
+function SignedInApp({ email }: { email: string }) {
+  const store = useFirebaseStore(email.toLowerCase())
+  if (!store.ready) return <main className="empty">Loading your cellar…</main>
+  return <CellarApp store={store} account={email} />
+}
+
+function CellarApp({ store, account }: { store: Store; account?: string }) {
+  const { data } = store
   const [view, setView] = useState<View>({ name: 'list' })
   const [tab, setTab] = useState<'cellar' | 'tonight'>('cellar')
   const [cellarId, setCellarId] = useState(ALL)
   const [search, setSearch] = useState('')
-
-  useEffect(() => saveData(data), [data])
 
   const inCellar = useMemo(
     () => data.bottles.filter((b) => cellarId === ALL || b.cellarId === cellarId),
@@ -42,20 +78,15 @@ export default function App() {
     title(b).toLowerCase().includes(search.toLowerCase()),
   )
 
-  const putBottle = (bottle: Bottle) => {
-    const exists = data.bottles.some((b) => b.id === bottle.id)
-    setData({
-      ...data,
-      bottles: exists ? data.bottles.map((b) => (b.id === bottle.id ? bottle : b)) : [...data.bottles, bottle],
-    })
-  }
-
   const addCellar = () => {
     const name = window.prompt('Name of the new cellar')?.trim()
-    if (!name) return
-    const cellar = { id: newId(), name }
-    setData({ ...data, cellars: [...data.cellars, cellar] })
-    setCellarId(cellar.id)
+    if (name) store.addCellar(name)
+  }
+
+  const selected = data.cellars.find((c) => c.id === cellarId)
+  const share = () => {
+    const email = window.prompt(`Google account email of the person to share "${selected!.name}" with`)?.trim()
+    if (email) store.shareCellar!(selected!.id, email)
   }
 
   if (view.name === 'form') {
@@ -66,7 +97,7 @@ export default function App() {
           cellars={data.cellars}
           defaultCellarId={cellarId === ALL ? data.cellars[0].id : cellarId}
           onSave={(bottle) => {
-            putBottle(bottle)
+            store.putBottle(bottle)
             setView({ name: 'list' })
           }}
           onCancel={() => setView({ name: 'list' })}
@@ -84,9 +115,9 @@ export default function App() {
           cellarName={data.cellars.find((c) => c.id === detail.cellarId)?.name ?? ''}
           onBack={() => setView({ name: 'list' })}
           onEdit={() => setView({ name: 'form', bottle: detail })}
-          onChange={putBottle}
+          onChange={store.putBottle}
           onDelete={() => {
-            setData({ ...data, bottles: data.bottles.filter((b) => b.id !== detail.id) })
+            store.deleteBottle(detail)
             setView({ name: 'list' })
           }}
         />
@@ -108,7 +139,19 @@ export default function App() {
             ))}
           </select>
           <button onClick={addCellar}>New cellar</button>
+          {store.shareCellar && selected && <button onClick={share}>Share</button>}
         </div>
+        {selected?.members && selected.members.length > 1 && (
+          <p className="meta">Shared with {selected.members.filter((m) => m !== account?.toLowerCase()).join(', ')}</p>
+        )}
+        {account && (
+          <p className="meta">
+            {account}
+            <button className="link" onClick={() => void signOut(auth!)}>
+              Sign out
+            </button>
+          </p>
+        )}
       </header>
 
       <section className="summary">

@@ -261,6 +261,11 @@ button.active {
   padding: 24px 0;
 }
 
+.signin {
+  text-align: center;
+  padding-top: 25vh;
+}
+
 .add {
   position: fixed;
   bottom: 16px;

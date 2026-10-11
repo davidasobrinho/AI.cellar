@@ -1,0 +1,270 @@
+:root {
+  --text: #2b2730;
+  --muted: #6f6a76;
+  --bg: #faf8f5;
+  --card: #fff;
+  --border: #e4dfd8;
+  --accent: #6d1f2f;
+  --green: #2e8b57;
+  --blue: #2f6fcf;
+  --red: #c0392b;
+
+  font: 16px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #ece8e3;
+    --muted: #a39ea9;
+    --bg: #17151a;
+    --card: #211e25;
+    --border: #36323b;
+    --accent: #c2566b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+h2 {
+  font-size: 20px;
+  margin: 12px 0 4px;
+}
+h3 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+p {
+  margin: 0 0 6px;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+input,
+select,
+textarea {
+  width: 100%;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.danger {
+  color: var(--red);
+}
+button.link {
+  border: 0;
+  background: none;
+  min-height: 0;
+  padding: 0 0 0 8px;
+  color: var(--accent);
+  text-decoration: underline;
+}
+button.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+.row > * {
+  flex: 1;
+  min-width: 0;
+}
+.row > button {
+  flex: none;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+.summary div {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+.summary strong {
+  display: block;
+  font-size: 18px;
+}
+.summary span,
+.meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.tabs button {
+  flex: 1;
+}
+
+.bottles,
+.openings {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.bottles li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.openings li {
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.sticker {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  vertical-align: -2px;
+}
+.sticker.green {
+  background: var(--green);
+  border: 0;
+}
+.sticker.blue {
+  background: var(--blue);
+  border: 0;
+}
+.sticker.red {
+  background: var(--red);
+  border: 0;
+}
+
+.status {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--muted);
+}
+.s-prime,
+.s-ready-any-time {
+  color: var(--green);
+}
+.s-approaching {
+  color: var(--blue);
+}
+.s-declining {
+  color: #c77700;
+}
+.s-past-prime {
+  color: var(--red);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+}
+.card input {
+  margin: 8px 0;
+}
+.ratings {
+  display: flex;
+  gap: 8px;
+}
+.ratings button {
+  flex: 1;
+}
+
+.form label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.form label > * {
+  margin-top: 4px;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 0;
+}
+
+.add {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(528px, calc(100% - 32px));
+}

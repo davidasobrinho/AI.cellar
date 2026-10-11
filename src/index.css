@@ -261,6 +261,11 @@ button.active {
   padding: 24px 0;
 }
 
+.error {
+  color: var(--red);
+  font-size: 14px;
+}
+
 .signin {
   text-align: center;
   padding-top: 25vh;

@@ -18,6 +18,8 @@ import { db } from './firebase'
 export interface Store {
   data: CellarData
   ready: boolean
+  // The last failure reading or saving, in the storage's own words.
+  error?: string
   putBottle: (bottle: Bottle) => void
   deleteBottle: (bottle: Bottle) => void
   addCellar: (name: string) => void
@@ -68,19 +70,27 @@ export function useFirebaseStore(email: string): Store {
   const [cellars, setCellars] = useState<Cellar[]>([])
   const [bottles, setBottles] = useState<Record<string, Bottle[]>>({})
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string>()
+  const fail = (e: Error) => setError(e.message)
 
   useEffect(() => {
     const mine = query(collection(db!, 'cellars'), where('members', 'array-contains', email))
-    return onSnapshot(mine, (snap) => {
-      if (snap.empty) {
-        // A first sign-in gets a cellar to start with. Wait for the server's
-        // answer so that being offline does not create a second one.
-        if (!snap.metadata.fromCache) void addDoc(collection(db!, 'cellars'), { name: 'Main cellar', members: [email] })
-        return
-      }
-      setCellars(snap.docs.map((d) => ({ id: d.id, name: d.data().name, members: d.data().members })))
-      setReady(true)
-    })
+    return onSnapshot(
+      mine,
+      (snap) => {
+        if (snap.empty) {
+          // A first sign-in gets a cellar to start with. Wait for the server's
+          // answer so that being offline does not create a second one.
+          if (!snap.metadata.fromCache) {
+            addDoc(collection(db!, 'cellars'), { name: 'Main cellar', members: [email] }).catch(fail)
+          }
+          return
+        }
+        setCellars(snap.docs.map((d) => ({ id: d.id, name: d.data().name, members: d.data().members })))
+        setReady(true)
+      },
+      fail,
+    )
   }, [email])
 
   const cellarIds = cellars.map((c) => c.id).join(',')
@@ -89,8 +99,10 @@ export function useFirebaseStore(email: string): Store {
       .split(',')
       .filter(Boolean)
       .map((id) =>
-        onSnapshot(collection(db!, 'cellars', id, 'bottles'), (snap) =>
-          setBottles((all) => ({ ...all, [id]: snap.docs.map((d) => d.data() as Bottle) })),
+        onSnapshot(
+          collection(db!, 'cellars', id, 'bottles'),
+          (snap) => setBottles((all) => ({ ...all, [id]: snap.docs.map((d) => d.data() as Bottle) })),
+          fail,
         ),
       )
     return () => stops.forEach((stop) => stop())
@@ -102,14 +114,15 @@ export function useFirebaseStore(email: string): Store {
   return {
     data,
     ready,
+    error,
     putBottle: (bottle) => {
       const before = data.bottles.find((b) => b.id === bottle.id)
-      if (before && before.cellarId !== bottle.cellarId) void deleteDoc(bottleRef(before))
-      void setDoc(bottleRef(bottle), bottle)
+      if (before && before.cellarId !== bottle.cellarId) deleteDoc(bottleRef(before)).catch(fail)
+      setDoc(bottleRef(bottle), bottle).catch(fail)
     },
-    deleteBottle: (bottle) => void deleteDoc(bottleRef(bottle)),
-    addCellar: (name) => void addDoc(collection(db!, 'cellars'), { name, members: [email] }),
+    deleteBottle: (bottle) => void deleteDoc(bottleRef(bottle)).catch(fail),
+    addCellar: (name) => void addDoc(collection(db!, 'cellars'), { name, members: [email] }).catch(fail),
     shareCellar: (cellarId, other) =>
-      void updateDoc(doc(db!, 'cellars', cellarId), { members: arrayUnion(other.trim().toLowerCase()) }),
+      void updateDoc(doc(db!, 'cellars', cellarId), { members: arrayUnion(other.trim().toLowerCase()) }).catch(fail),
   }
 }

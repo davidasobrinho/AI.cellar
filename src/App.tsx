@@ -58,7 +58,19 @@ function SharedApp() {
 
 function SignedInApp({ email }: { email: string }) {
   const store = useFirebaseStore(email.toLowerCase())
-  if (!store.ready) return <main className="empty">Loading your cellar…</main>
+  if (!store.ready) {
+    return (
+      <main className="empty">
+        {store.error ? `Could not load your cellar: ${store.error}` : 'Loading your cellar…'}
+        <p>
+          {email}
+          <button className="link" onClick={() => void signOut(auth!)}>
+            Sign out
+          </button>
+        </p>
+      </main>
+    )
+  }
   return <CellarApp store={store} account={email} />
 }
 
@@ -153,6 +165,8 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           </p>
         )}
       </header>
+
+      {store.error && <p className="error">Could not save or load: {store.error}</p>}
 
       <section className="summary">
         <div>

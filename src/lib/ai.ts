@@ -13,6 +13,8 @@ const usedUp = new Set<string>()
 const TIMEOUT_MS = 60_000
 
 const isQuotaError = (e: unknown) => /429|quota|RESOURCE_EXHAUSTED/i.test(e instanceof Error ? e.message : '')
+// A model that is overloaded or timed out: the next one may still answer.
+const isBusyError = (e: unknown) => /\[50\d|high demand|overloaded|UNAVAILABLE|No answer after/i.test(e instanceof Error ? e.message : '')
 
 // Asks for an answer in the shape of the schema. Photos are JPEG or PNG data URLs.
 export async function generateJson<T>(system: string, schema: Schema, prompt: string, photos: string[] = []): Promise<T> {
@@ -23,6 +25,7 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
       return { type: 'inlineData' as const, inlineData: { mimeType: meta.slice(5, meta.indexOf(';')), data } }
     }),
   ]
+  let busy = false
   for (const name of MODELS.filter((m) => !usedUp.has(m))) {
     const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), {
       model: name,
@@ -39,11 +42,16 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
       ])
       return JSON.parse(result.response.text()) as T
     } catch (e) {
-      if (!isQuotaError(e)) throw e
-      usedUp.add(name)
+      if (isQuotaError(e)) usedUp.add(name)
+      else if (isBusyError(e)) busy = true
+      else throw e
     }
   }
-  throw new Error("Today's free AI allowance is used up. It resets within a day.")
+  throw new Error(
+    busy
+      ? 'The AI models are busy right now. Try again in a minute.'
+      : "Today's free AI allowance is used up. It resets within a day.",
+  )
 }
 
 const MAX_SIDE = 1600

@@ -13,15 +13,24 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
     systemInstruction: system,
     generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
   })
-  const result = await model.generateContent([
+  const request = model.generateContent([
     prompt,
     ...photos.map((dataUrl) => {
       const [meta, data] = dataUrl.split(',')
       return { type: 'inlineData' as const, inlineData: { mimeType: meta.slice(5, meta.indexOf(';')), data } }
     }),
   ])
+  // The App Check step can wait forever when the browser check does not complete.
+  const result = await Promise.race([
+    request,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('No answer after 60 seconds. The security check may be blocked in this browser.')), TIMEOUT_MS),
+    ),
+  ])
   return JSON.parse(result.response.text()) as T
 }
+
+const TIMEOUT_MS = 60_000
 
 const MAX_SIDE = 1600
 

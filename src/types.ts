@@ -37,10 +37,46 @@ export type Tier = (typeof TIERS)[number]
 export const RATINGS = ['Liked', 'OK', 'Disliked'] as const
 export type Rating = (typeof RATINGS)[number]
 
+// Quick words for why a wine did or did not please.
+export const TASTE_TAGS = [
+  'Fresh',
+  'Elegant',
+  'Fruity',
+  'Smooth',
+  'Complex',
+  'Powerful',
+  'Too heavy',
+  'Too tannic',
+  'Too oaky',
+  'Too acidic',
+  'Too sweet',
+  'Thin',
+] as const
+
 export interface Opening {
   date: string
   rating: Rating | null
   note: string
+  tags?: string[]
+}
+
+// A wine tried somewhere, not a bottle in the cellar.
+export interface Tasting {
+  id: string
+  date: string
+  wine: string
+  type: WineType
+  region: Region
+  rating: Rating
+  tags: string[]
+  note: string
+}
+
+// One person's taste. It belongs to the account, not to a cellar.
+export interface Profile {
+  // In the person's own words, including firm rules such as "no sweet wines".
+  about: string
+  tastings: Tasting[]
 }
 
 // Calendar years.

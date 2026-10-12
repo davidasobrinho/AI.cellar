@@ -4,6 +4,7 @@ import { BAND_LABELS, euros, priceBand } from '../lib/price'
 import { STATUS_DESCRIPTION, drinkingWindow } from '../lib/windows'
 import { RATINGS } from '../types'
 import type { Bottle, LabelDetails, Rating } from '../types'
+import { TagPicker } from './Palate'
 import { StatusBadge, Sticker, WindowBar } from './status'
 import { Button, Field, SectionTitle, SheetHeader, cn } from './ui'
 
@@ -20,6 +21,7 @@ const YEAR = new Date().getFullYear()
 export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: Props) {
   const [rating, setRating] = useState<Rating | null>(null)
   const [note, setNote] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const w = drinkingWindow(bottle)
   const band = priceBand(bottle.priceToday)
   const start = w.dates ? Math.min(w.dates.drinkFrom, YEAR) - 2 : 0
@@ -29,10 +31,11 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
     onChange({
       ...bottle,
       quantity: bottle.quantity - 1,
-      openings: [{ date: new Date().toISOString(), rating, note }, ...bottle.openings],
+      openings: [{ date: new Date().toISOString(), rating, note, tags }, ...bottle.openings],
     })
     setRating(null)
     setNote('')
+    setTags([])
   }
   const undo = () => onChange({ ...bottle, quantity: bottle.quantity + 1, openings: bottle.openings.slice(1) })
 
@@ -125,6 +128,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
             </Button>
           ))}
         </div>
+        <TagPicker value={tags} onChange={setTags} />
         <Field label="Occasion, food, what you thought" value={note} onChange={setNote} />
         <Button className="h-11" onClick={open} disabled={bottle.quantity === 0}>
           <WineIcon aria-hidden="true" />
@@ -138,6 +142,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
                 <span>
                   <span className="tabular-nums text-muted-foreground">{new Date(o.date).toLocaleDateString('en-GB')}</span>
                   {o.rating && ` · ${o.rating}`}
+                  {o.tags && o.tags.length > 0 && ` · ${o.tags.join(', ')}`}
                   {o.note && ` · ${o.note}`}
                 </span>
                 {i === 0 && (

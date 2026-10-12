@@ -4,7 +4,7 @@ import { ArrowUpRight, Camera, Loader2, X } from 'lucide-react'
 import { aiEnabled, resizeToDataUrl } from '../lib/ai'
 import { askSommelier } from '../lib/sommelier'
 import type { Advice, Place } from '../lib/sommelier'
-import type { Bottle } from '../types'
+import type { Bottle, Profile } from '../types'
 import { Button, Field, SectionTitle, cn } from './ui'
 
 const PLACES: { id: Place; label: string; hint: string }[] = [
@@ -15,7 +15,16 @@ const PLACES: { id: Place; label: string; hint: string }[] = [
 
 const MAX_PAGES = 3
 
-export function Sommelier({ bottles, onSelect }: { bottles: Bottle[]; onSelect: (bottle: Bottle) => void }) {
+interface Props {
+  // Bottles that can be opened: the selected cellar.
+  bottles: Bottle[]
+  // Every bottle the person can see, for the ratings behind their taste.
+  rated: Bottle[]
+  profile: Profile
+  onSelect: (bottle: Bottle) => void
+}
+
+export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
   const [place, setPlace] = useState<Place>('home')
   const [food, setFood] = useState('')
   const [occasion, setOccasion] = useState('')
@@ -44,7 +53,7 @@ export function Sommelier({ bottles, onSelect }: { bottles: Bottle[]; onSelect: 
     setError(null)
     setAdvice(null)
     try {
-      setAdvice(await askSommelier({ place, food, occasion, budget, photos }, bottles))
+      setAdvice(await askSommelier({ place, food, occasion, budget, photos }, bottles, rated, profile))
     } catch (err) {
       setError(`The sommelier could not answer. ${err instanceof Error ? err.message : ''}`)
     } finally {
@@ -130,7 +139,7 @@ export function Sommelier({ bottles, onSelect }: { bottles: Bottle[]; onSelect: 
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          The date, the time of day and the season are taken into account. So are the bottles you rated.
+          The date, the time of day and the season are taken into account. So is your palate.
           {place === 'home' && !bottles.some((b) => b.quantity > 0) && ' Your cellar is empty, so there is nothing to pick from yet.'}
         </p>
 
@@ -176,6 +185,11 @@ export function Sommelier({ bottles, onSelect }: { bottles: Bottle[]; onSelect: 
               )
             })}
           </ol>
+          <p className="border-l-2 border-primary bg-muted/70 p-3 text-sm">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Based on your taste</span>
+            <br />
+            {advice.basedOn || 'Nothing personal yet, so this is general advice. Rate some wines in Palate to change that.'}
+          </p>
           {advice.caution && <p className="border border-dashed p-3 text-sm text-muted-foreground">{advice.caution}</p>}
           <p className="text-xs text-muted-foreground">Advice from an AI model. It can be wrong, so trust your own taste.</p>
         </div>

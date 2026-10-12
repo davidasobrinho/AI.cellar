@@ -3,6 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
 import { BottleForm } from './components/BottleForm'
+import { Palate } from './components/Palate'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
 import { Button, Sheet, cn } from './components/ui'
@@ -83,11 +84,12 @@ function Account({ email }: { email: string }) {
   )
 }
 
-type View = 'list' | 'timeline' | 'sommelier'
+type View = 'list' | 'timeline' | 'sommelier' | 'palate'
 const VIEWS: { id: View; label: string }[] = [
   { id: 'list', label: 'Bottles' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'sommelier', label: 'Sommelier' },
+  { id: 'palate', label: 'Palate' },
 ]
 
 type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | null
@@ -111,6 +113,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       .sort((a, b) => rank(a) - rank(b) || until(a) - until(b))
   }, [inCellar, status])
 
+  const cellarView = view === 'list' || view === 'timeline'
   const selected = data.cellars.find((c) => c.id === cellarId)
   const detail = panel?.kind === 'detail' ? data.bottles.find((b) => b.id === panel.id) : undefined
   const select = (b: Bottle) => setPanel({ kind: 'detail', id: b.id })
@@ -139,7 +142,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           </div>
         </div>
         <nav aria-label="Views" className="border-y">
-          <div className="mx-auto flex max-w-6xl justify-center gap-8 px-5">
+          <div className="mx-auto flex max-w-6xl justify-center gap-6 overflow-x-auto px-5 sm:gap-8">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -202,13 +205,17 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           )}
         </div>
 
-        {view === 'sommelier' && <Sommelier bottles={inCellar} onSelect={select} />}
+        {view === 'sommelier' && (
+          <Sommelier bottles={inCellar} rated={data.bottles} profile={store.profile} onSelect={select} />
+        )}
 
-        {view !== 'sommelier' && <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />}
+        {view === 'palate' && <Palate profile={store.profile} bottles={data.bottles} onSave={store.saveProfile} />}
 
-        {view !== 'sommelier' && status === null && <DontMiss bottles={inCellar} onSelect={select} />}
+        {cellarView && <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />}
 
-        <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', view === 'sommelier' && 'hidden')}>
+        {cellarView && status === null && <DontMiss bottles={inCellar} onSelect={select} />}
+
+        <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', !cellarView && 'hidden')}>
           <div className="flex items-baseline justify-between gap-4">
             <h2 id="bottles" className="font-serif text-3xl font-light">
               {status ?? (view === 'list' ? 'All bottles' : 'Drinking timeline')}

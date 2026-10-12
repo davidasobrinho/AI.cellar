@@ -11,12 +11,17 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
-import type { Bottle, Cellar, CellarData } from '../types'
+import type { Bottle, Cellar, CellarData, Profile } from '../types'
 import { db } from './firebase'
+
+const NO_PROFILE: Profile = { about: '', tastings: [] }
 
 // The screens talk to a Store and do not know where the cellar is kept.
 export interface Store {
   data: CellarData
+  // The signed-in person's own taste. Never shared with a cellar's other members.
+  profile: Profile
+  saveProfile: (profile: Profile) => void
   ready: boolean
   // The last failure reading or saving, in the storage's own words.
   error?: string
@@ -33,6 +38,7 @@ export function newId(): string {
 }
 
 const KEY = 'private-sommelier:v1'
+const PROFILE_KEY = 'private-sommelier:profile:v1'
 
 const EMPTY: CellarData = { cellars: [{ id: 'main', name: 'Main cellar' }], bottles: [] }
 
@@ -49,9 +55,19 @@ function loadLocal(): CellarData {
 export function useLocalStore(): Store {
   const [data, setData] = useState<CellarData>(loadLocal)
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(data)), [data])
+  const [profile, setProfile] = useState<Profile>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(PROFILE_KEY) ?? 'null') ?? NO_PROFILE
+    } catch {
+      return NO_PROFILE
+    }
+  })
+  useEffect(() => localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)), [profile])
 
   return {
     data,
+    profile,
+    saveProfile: setProfile,
     ready: true,
     putBottle: (bottle) =>
       setData((d) => ({
@@ -122,11 +138,25 @@ export function useFirebaseStore(email: string): Store {
     return () => stops.forEach((stop) => stop())
   }, [cellarIds])
 
+  // The taste profile lives at profiles/{email}, readable only by that person.
+  const [profile, setProfile] = useState<Profile>(NO_PROFILE)
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(db!, 'profiles', email),
+        (snap) => setProfile({ ...NO_PROFILE, ...(snap.data() as Partial<Profile> | undefined) }),
+        fail('reading your taste profile'),
+      ),
+    [email],
+  )
+
   const data = { cellars, bottles: cellars.flatMap((c) => bottles[c.id] ?? []) }
   const bottleRef = (b: Bottle) => doc(db!, 'cellars', b.cellarId, 'bottles', b.id)
 
   return {
     data,
+    profile,
+    saveProfile: (next) => void setDoc(doc(db!, 'profiles', email), next).catch(fail('saving your taste profile')),
     ready,
     error,
     putBottle: (bottle) => {

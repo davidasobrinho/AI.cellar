@@ -6,31 +6,45 @@ import { app, firebaseEnabled } from './firebase'
 // App Check, when a site key is set, adds proof that a request comes from this app.
 export const aiEnabled = firebaseEnabled
 
+// Best model first. The free tier gives each model its own small daily allowance,
+// so when one is used up for the day the next one takes over.
+const MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
+const usedUp = new Set<string>()
+const TIMEOUT_MS = 60_000
+
+const isQuotaError = (e: unknown) => /429|quota|RESOURCE_EXHAUSTED/i.test(e instanceof Error ? e.message : '')
+
 // Asks for an answer in the shape of the schema. Photos are JPEG or PNG data URLs.
 export async function generateJson<T>(system: string, schema: Schema, prompt: string, photos: string[] = []): Promise<T> {
-  const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), {
-    model: 'gemini-3.8-flash',
-    systemInstruction: system,
-    generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
-  })
-  const request = model.generateContent([
+  const parts = [
     prompt,
     ...photos.map((dataUrl) => {
       const [meta, data] = dataUrl.split(',')
       return { type: 'inlineData' as const, inlineData: { mimeType: meta.slice(5, meta.indexOf(';')), data } }
     }),
-  ])
-  // The App Check step can wait forever when the browser check does not complete.
-  const result = await Promise.race([
-    request,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('No answer after 60 seconds. The security check may be blocked in this browser.')), TIMEOUT_MS),
-    ),
-  ])
-  return JSON.parse(result.response.text()) as T
+  ]
+  for (const name of MODELS.filter((m) => !usedUp.has(m))) {
+    const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), {
+      model: name,
+      systemInstruction: system,
+      generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
+    })
+    try {
+      // The App Check step can wait forever when the browser check does not complete.
+      const result = await Promise.race([
+        model.generateContent(parts),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('No answer after 60 seconds.')), TIMEOUT_MS),
+        ),
+      ])
+      return JSON.parse(result.response.text()) as T
+    } catch (e) {
+      if (!isQuotaError(e)) throw e
+      usedUp.add(name)
+    }
+  }
+  throw new Error("Today's free AI allowance is used up. It resets within a day.")
 }
-
-const TIMEOUT_MS = 60_000
 
 const MAX_SIDE = 1600
 

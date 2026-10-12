@@ -22,7 +22,8 @@ export interface Store {
   error?: string
   putBottle: (bottle: Bottle) => void
   deleteBottle: (bottle: Bottle) => void
-  addCellar: (name: string) => void
+  // A new cellar, optionally filled with bottles from the start.
+  addCellar: (name: string, bottles?: Omit<Bottle, 'cellarId'>[]) => void
   // Only shared storage can give another person access to a cellar.
   shareCellar?: (cellarId: string, email: string) => void
 }
@@ -60,7 +61,13 @@ export function useLocalStore(): Store {
           : [...d.bottles, bottle],
       })),
     deleteBottle: (bottle) => setData((d) => ({ ...d, bottles: d.bottles.filter((b) => b.id !== bottle.id) })),
-    addCellar: (name) => setData((d) => ({ ...d, cellars: [...d.cellars, { id: newId(), name }] })),
+    addCellar: (name, bottles = []) => {
+      const cellarId = newId()
+      setData((d) => ({
+        cellars: [...d.cellars, { id: cellarId, name }],
+        bottles: [...d.bottles, ...bottles.map((b) => ({ ...b, cellarId }))],
+      }))
+    },
   }
 }
 
@@ -130,8 +137,12 @@ export function useFirebaseStore(email: string): Store {
       setDoc(bottleRef(bottle), bottle).catch(fail('saving the bottle'))
     },
     deleteBottle: (bottle) => void deleteDoc(bottleRef(bottle)).catch(fail('removing the bottle')),
-    addCellar: (name) =>
-      void addDoc(collection(db!, 'cellars'), { name, members: [email] }).catch(fail('creating the cellar')),
+    addCellar: (name, bottles = []) =>
+      void addDoc(collection(db!, 'cellars'), { name, members: [email] })
+        .then((cellar) =>
+          Promise.all(bottles.map((b) => setDoc(doc(cellar, 'bottles', b.id), { ...b, cellarId: cellar.id }))),
+        )
+        .catch(fail('creating the cellar')),
     shareCellar: (cellarId, other) =>
       void updateDoc(doc(db!, 'cellars', cellarId), { members: arrayUnion(other.trim().toLowerCase()) }).catch(
         fail('sharing the cellar'),

@@ -7,6 +7,7 @@ import { WineDetail } from './components/WineDetail'
 import { Button, Sheet, cn } from './components/ui'
 import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
 import { auth, firebaseEnabled } from './lib/firebase'
+import { SHOWCASE_CELLAR, showcaseBottles } from './lib/showcase'
 import { useFirebaseStore, useLocalStore } from './lib/store'
 import type { Store } from './lib/store'
 import { STATUS_ORDER, drinkingWindow } from './lib/windows'
@@ -176,6 +177,11 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
             <Button variant="ghost" className="h-9" onClick={addCellar}>
               New cellar
             </Button>
+            {!data.cellars.some((c) => c.name === SHOWCASE_CELLAR) && (
+              <Button variant="ghost" className="h-9" onClick={() => store.addCellar(SHOWCASE_CELLAR, showcaseBottles())}>
+                Add showcase wines
+              </Button>
+            )}
             {store.shareCellar && selected && (
               <Button variant="ghost" className="h-9" onClick={share}>
                 Share

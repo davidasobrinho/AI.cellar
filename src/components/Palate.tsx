@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { X } from 'lucide-react'
+import { samplePalate } from '../lib/showcase'
 import { newId } from '../lib/store'
+import { palate } from '../lib/structure'
 import { ratedWines } from '../lib/taste'
 import { RATINGS, REGIONS, TASTE_TAGS, WINE_TYPES } from '../types'
 import type { Bottle, Profile, Rating, Tasting } from '../types'
+import { PalateGraph } from './PalateGraph'
 import { Button, Field, SectionTitle, SelectField, cn } from './ui'
 
 interface Props {
@@ -46,6 +49,8 @@ export function Palate({ profile, bottles, onSave }: Props) {
   const [about, setAbout] = useState(profile.about)
   const [draft, setDraft] = useState<Omit<Tasting, 'id' | 'date'>>(BLANK)
   const rated = ratedWines(bottles, profile)
+  const [example, setExample] = useState(false)
+  const mine = palate(rated)
 
   const add = (e: FormEvent) => {
     e.preventDefault()
@@ -78,6 +83,40 @@ export function Palate({ profile, bottles, onSave }: Props) {
           <dd className="font-serif text-2xl font-light">{strength(rated.length)}</dd>
         </div>
       </dl>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex items-baseline justify-between gap-4">
+          <SectionTitle>{example ? "Example: João's palate" : 'Your palate graph'}</SectionTitle>
+          <button
+            type="button"
+            onClick={() => setExample(!example)}
+            className="text-xs text-primary underline underline-offset-4"
+          >
+            {example ? 'Back to mine' : 'See an example'}
+          </button>
+        </div>
+        {example ? (
+          <>
+            <PalateGraph shape={palate(samplePalate())} />
+            <p className="text-center text-xs text-muted-foreground">
+              Built from ten wines João's newsletter scored 5 out of 5, counted as liked. Their structure values are rough
+              estimates.
+            </p>
+          </>
+        ) : mine.liked || mine.disliked ? (
+          <>
+            <PalateGraph shape={mine} />
+            <p className="text-center text-xs text-muted-foreground">
+              The average build of the wines you rated. A wine read from its label uses its own values; any other uses an
+              estimate for its type and region.
+            </p>
+          </>
+        ) : (
+          <p className="border-l-2 border-primary bg-muted/70 p-4 text-sm text-muted-foreground">
+            The graph appears once you have rated a wine as liked or disliked. See an example to know what to expect.
+          </p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-3">
         <SectionTitle>In your own words</SectionTitle>

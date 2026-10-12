@@ -29,6 +29,8 @@ export interface Store {
   deleteBottle: (bottle: Bottle) => void
   // A new cellar, optionally filled with bottles from the start.
   addCellar: (name: string, bottles?: Omit<Bottle, 'cellarId'>[]) => void
+  // Removes the cellar and every bottle in it, for all its members.
+  deleteCellar: (cellarId: string) => void
   // Only shared storage can give another person access to a cellar.
   shareCellar?: (cellarId: string, email: string) => void
 }
@@ -84,6 +86,11 @@ export function useLocalStore(): Store {
         bottles: [...d.bottles, ...bottles.map((b) => ({ ...b, cellarId }))],
       }))
     },
+    deleteCellar: (cellarId) =>
+      setData((d) => ({
+        cellars: d.cellars.filter((c) => c.id !== cellarId),
+        bottles: d.bottles.filter((b) => b.cellarId !== cellarId),
+      })),
   }
 }
 
@@ -173,6 +180,11 @@ export function useFirebaseStore(email: string): Store {
           Promise.all(bottles.map((b) => setDoc(doc(cellar, 'bottles', b.id), { ...b, cellarId: cellar.id }))),
         )
         .catch(fail('creating the cellar')),
+    // Bottles go first: the rules check the cellar's members to allow each removal.
+    deleteCellar: (cellarId) =>
+      void Promise.all((bottles[cellarId] ?? []).map((b) => deleteDoc(bottleRef(b))))
+        .then(() => deleteDoc(doc(db!, 'cellars', cellarId)))
+        .catch(fail('deleting the cellar')),
     shareCellar: (cellarId, other) =>
       void updateDoc(doc(db!, 'cellars', cellarId), { members: arrayUnion(other.trim().toLowerCase()) }).catch(
         fail('sharing the cellar'),

@@ -4,7 +4,9 @@ import { BAND_LABELS, euros, priceBand } from '../lib/price'
 import { STATUS_DESCRIPTION, drinkingWindow } from '../lib/windows'
 import { RATINGS } from '../types'
 import type { Bottle, LabelDetails, Rating } from '../types'
+import { styleStructure } from '../lib/structure'
 import { TagPicker } from './Palate'
+import { StructureBars } from './PalateGraph'
 import { StatusBadge, Sticker, WindowBar } from './status'
 import { Button, Field, SectionTitle, SheetHeader, cn } from './ui'
 
@@ -88,6 +90,14 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
           {w.source === 'This wine'
             ? 'An estimate for this wine and vintage. It assumes good storage.'
             : 'An estimate from the style of the wine, not this producer or year. It assumes good storage.'}
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-4 border-b p-6">
+        <SectionTitle>Structure</SectionTitle>
+        <StructureBars structure={bottle.structure ?? styleStructure(bottle)} />
+        <p className="text-xs text-muted-foreground">
+          {bottle.structure ? 'Estimated for this wine.' : 'Estimated from its type, region and level, not this producer.'}
         </p>
       </section>
 

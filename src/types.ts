@@ -60,6 +60,18 @@ export interface Opening {
   tags?: string[]
 }
 
+// How a wine is built, each scale from 1 (low) to 5 (high).
+export interface Structure {
+  body: number
+  tannin: number
+  acidity: number
+  oak: number
+  // From lean and savoury to ripe and fruit-forward.
+  fruit: number
+  // From young to fully aged.
+  age: number
+}
+
 // A wine tried somewhere, not a bottle in the cellar.
 export interface Tasting {
   id: string
@@ -126,6 +138,8 @@ export interface Bottle {
   // the window is estimated from the style.
   window?: DrinkWindow | null
   label?: LabelDetails | null
+  // Set for this wine by a label reading. Without it, estimated from the style.
+  structure?: Structure | null
 }
 
 export interface Cellar {

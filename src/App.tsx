@@ -16,8 +16,6 @@ import { STATUS_ORDER, drinkingWindow } from './lib/windows'
 import type { WindowStatus } from './lib/windows'
 import type { Bottle } from './types'
 
-const ALL = 'all'
-
 function Brand() {
   return <h1 className="font-serif text-2xl font-light tracking-[0.35em] md:text-3xl">CAVE SOBRI</h1>
 }
@@ -84,27 +82,52 @@ function Account({ email }: { email: string }) {
   )
 }
 
-type View = 'list' | 'timeline' | 'sommelier' | 'palate'
+type View = 'cellar' | 'sommelier' | 'palate'
 const VIEWS: { id: View; label: string }[] = [
-  { id: 'list', label: 'Bottles' },
-  { id: 'timeline', label: 'Timeline' },
+  { id: 'cellar', label: 'Cellar' },
   { id: 'sommelier', label: 'Sommelier' },
   { id: 'palate', label: 'Palate' },
 ]
 
+type Layout = 'list' | 'timeline'
+const LAYOUTS: { id: Layout; label: string }[] = [
+  { id: 'list', label: 'List' },
+  { id: 'timeline', label: 'Timeline' },
+]
+
 type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | null
+
+function Chip({ active, className, ...props }: React.ComponentProps<'button'> & { active: boolean }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      className={cn(
+        'inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm transition-colors',
+        active ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground/40',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 function CellarApp({ store, account }: { store: Store; account?: string }) {
   const { data } = store
-  const [view, setView] = useState<View>('list')
+  const [view, setView] = useState<View>('cellar')
+  const [layout, setLayout] = useState<Layout>('list')
   const [status, setStatus] = useState<WindowStatus | null>(null)
-  const [cellarId, setCellarId] = useState(ALL)
+  // The cellars being looked at. None chosen means all of them.
+  const [chosen, setChosen] = useState<string[]>([])
   const [panel, setPanel] = useState<Panel>(null)
 
-  const inCellar = useMemo(
-    () => data.bottles.filter((b) => cellarId === ALL || b.cellarId === cellarId),
-    [data.bottles, cellarId],
-  )
+  // A chosen cellar that has since been deleted no longer counts.
+  const shown = chosen.filter((id) => data.cellars.some((c) => c.id === id))
+  const shownKey = shown.join(',')
+  const inCellar = useMemo(() => {
+    const ids = shownKey.split(',')
+    return data.bottles.filter((b) => shownKey === '' || ids.includes(b.cellarId))
+  }, [data.bottles, shownKey])
   const visible = useMemo(() => {
     const rank = (b: Bottle) => STATUS_ORDER.indexOf(drinkingWindow(b).status)
     const until = (b: Bottle) => drinkingWindow(b).dates?.drinkUntil ?? Infinity
@@ -113,8 +136,10 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       .sort((a, b) => rank(a) - rank(b) || until(a) - until(b))
   }, [inCellar, status])
 
-  const cellarView = view === 'list' || view === 'timeline'
-  const selected = data.cellars.find((c) => c.id === cellarId)
+  // Sharing and deleting act on one cellar, so they show when exactly one is chosen.
+  const selected = shown.length === 1 ? data.cellars.find((c) => c.id === shown[0]) : undefined
+  const toggle = (id: string) => setChosen(shown.includes(id) ? shown.filter((c) => c !== id) : [...shown, id])
+  const cellarView = view === 'cellar'
   const detail = panel?.kind === 'detail' ? data.bottles.find((b) => b.id === panel.id) : undefined
   const select = (b: Bottle) => setPanel({ kind: 'detail', id: b.id })
 
@@ -125,6 +150,13 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
   const share = () => {
     const email = window.prompt(`Google account email of the person to share "${selected!.name}" with`)?.trim()
     if (email) store.shareCellar!(selected!.id, email)
+  }
+  const removeCellar = () => {
+    const count = data.bottles.filter((b) => b.cellarId === selected!.id).length
+    const shared = (selected!.members?.length ?? 1) > 1 ? ' It will disappear for everyone it is shared with.' : ''
+    if (window.confirm(`Delete the cellar "${selected!.name}" and its ${count} wines? This cannot be undone.${shared}`)) {
+      store.deleteCellar(selected!.id)
+    }
   }
 
   return (
@@ -164,68 +196,83 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       </header>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-14 px-5 py-10">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-            <select
-              aria-label="Cellar"
-              value={cellarId}
-              onChange={(e) => setCellarId(e.target.value)}
-              className="h-9 border-b border-input bg-transparent pr-2 outline-none focus-visible:border-primary"
-            >
-              <option value={ALL}>All cellars</option>
-              {data.cellars.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <Button variant="ghost" className="h-9" onClick={addCellar}>
-              New cellar
-            </Button>
-            {!data.cellars.some((c) => c.name === SHOWCASE_CELLAR) && (
-              <Button variant="ghost" className="h-9" onClick={() => store.addCellar(SHOWCASE_CELLAR, showcaseBottles())}>
-                Add showcase wines
-              </Button>
-            )}
-            {store.shareCellar && selected && (
-              <Button variant="ghost" className="h-9" onClick={share}>
-                Share
-              </Button>
-            )}
-          </div>
-          {selected?.members && selected.members.length > 1 && (
-            <p className="text-xs text-muted-foreground">
-              Shared with {selected.members.filter((m) => m !== account).join(', ')}
-            </p>
-          )}
-          {store.error && (
-            <p role="alert" className="text-sm text-destructive">
-              Problem {store.error}
-            </p>
-          )}
-        </div>
+        {store.error && (
+          <p role="alert" className="text-center text-sm text-destructive">
+            Problem {store.error}
+          </p>
+        )}
 
+        {/* Sommelier and Palate always draw on every cellar the person can see. */}
         {view === 'sommelier' && (
-          <Sommelier bottles={inCellar} rated={data.bottles} profile={store.profile} onSelect={select} />
+          <Sommelier bottles={data.bottles} rated={data.bottles} profile={store.profile} onSelect={select} />
         )}
 
         {view === 'palate' && <Palate profile={store.profile} bottles={data.bottles} onSave={store.saveProfile} />}
+
+        {cellarView && (
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Cellars to show">
+              <Chip active={shown.length === 0} onClick={() => setChosen([])}>
+                All cellars
+              </Chip>
+              {data.cellars.map((c) => (
+                <Chip key={c.id} active={shown.includes(c.id)} onClick={() => toggle(c.id)}>
+                  {c.name}
+                </Chip>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-1 text-sm">
+              <Button variant="ghost" className="h-8" onClick={addCellar}>
+                New cellar
+              </Button>
+              {!data.cellars.some((c) => c.name === SHOWCASE_CELLAR) && (
+                <Button variant="ghost" className="h-8" onClick={() => store.addCellar(SHOWCASE_CELLAR, showcaseBottles())}>
+                  Add showcase wines
+                </Button>
+              )}
+              {store.shareCellar && selected && (
+                <Button variant="ghost" className="h-8" onClick={share}>
+                  Share
+                </Button>
+              )}
+              {selected && data.cellars.length > 1 && (
+                <Button variant="danger" className="h-8" onClick={removeCellar}>
+                  Delete cellar
+                </Button>
+              )}
+            </div>
+            {selected?.members && selected.members.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                Shared with {selected.members.filter((m) => m !== account).join(', ')}
+              </p>
+            )}
+          </div>
+        )}
 
         {cellarView && <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />}
 
         {cellarView && status === null && <DontMiss bottles={inCellar} onSelect={select} />}
 
         <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', !cellarView && 'hidden')}>
-          <div className="flex items-baseline justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 id="bottles" className="font-serif text-3xl font-light">
-              {status ?? (view === 'list' ? 'All bottles' : 'Drinking timeline')}
+              {status ?? (layout === 'list' ? 'All wines' : 'Drinking timeline')}
             </h2>
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              {visible.length} {visible.length === 1 ? 'wine' : 'wines'}
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                {visible.length} {visible.length === 1 ? 'wine' : 'wines'}
+              </span>
+              <div className="flex gap-1" role="group" aria-label="Layout">
+                {LAYOUTS.map((l) => (
+                  <Chip key={l.id} active={layout === l.id} className="h-8" onClick={() => setLayout(l.id)}>
+                    {l.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {view === 'list' ? (
+          {layout === 'list' ? (
             <WineList bottles={visible} onSelect={select} />
           ) : (
             <TimelineView bottles={visible} onSelect={select} />
@@ -274,7 +321,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <BottleForm
             bottle={panel.bottle}
             cellars={data.cellars}
-            defaultCellarId={cellarId === ALL ? data.cellars[0].id : cellarId}
+            defaultCellarId={shown[0] ?? data.cellars[0].id}
             onSave={(bottle) => {
               store.putBottle(bottle)
               setStatus(null)

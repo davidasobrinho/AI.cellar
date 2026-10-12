@@ -2,17 +2,19 @@ import { Schema } from 'firebase/ai'
 import { REGIONS, TIERS, WINE_TYPES } from '../types'
 import type { Bottle } from '../types'
 import { aiEnabled, generateJson } from './ai'
+import { styleStructure } from './structure'
 
 // Reads one or two label photos with Gemini.
 export const scanEnabled = aiEnabled
 
 export type ScannedBottle = Pick<
   Bottle,
-  'producer' | 'name' | 'vintage' | 'type' | 'region' | 'tier' | 'grapes' | 'window' | 'label' | 'notes'
+  'producer' | 'name' | 'vintage' | 'type' | 'region' | 'tier' | 'grapes' | 'window' | 'label' | 'notes' | 'structure'
 >
 
 const text = (description: string) => Schema.string({ description })
 const year = (description: string) => Schema.integer({ description })
+const scale = (description: string) => Schema.integer({ description: `${description}. Your estimate for this wine` })
 
 const schema = Schema.object({
   properties: {
@@ -34,6 +36,11 @@ const schema = Schema.object({
     peakTo: year('Estimated end of peak drinking. 0 if it cannot be estimated'),
     drinkUntil: year('Estimated last good year. 0 if it cannot be estimated'),
     note: text('One short sentence on style and what to expect'),
+    body: scale('Body, from 1 light to 5 full'),
+    tannin: scale('Tannin, from 1 soft or none to 5 firm'),
+    acidity: scale('Acidity, from 1 round to 5 very fresh'),
+    oak: scale('Oak, from 1 none to 5 marked'),
+    fruit: scale('Fruit, from 1 lean and savoury to 5 ripe and fruit-forward'),
     designation: text('For example DOC Douro or Vinho Regional Alentejano. Empty if not printed'),
     classification: text('For example Reserva or Grande Reserva. Empty if none'),
     subRegion: text('Sub-region or vineyard. Empty if none'),
@@ -72,6 +79,17 @@ export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
     region: r.region,
     tier: r.tier,
     grapes: r.grapes,
+    structure: [r.body, r.tannin, r.acidity, r.oak, r.fruit].every((n) => n >= 1 && n <= 5)
+      ? {
+          body: r.body,
+          tannin: r.tannin,
+          acidity: r.acidity,
+          oak: r.oak,
+          fruit: r.fruit,
+          // Maturity follows from the vintage, so it is not asked of the model.
+          age: styleStructure({ type: r.type, region: r.region, vintage: r.vintage > 0 ? r.vintage : null }).age,
+        }
+      : null,
     notes: r.note,
     window: hasWindow
       ? { drinkFrom: r.drinkFrom, peakFrom: r.peakFrom, peakTo: r.peakTo, drinkUntil: r.drinkUntil }

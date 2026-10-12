@@ -3,6 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
 import { BottleForm } from './components/BottleForm'
+import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
 import { Button, Sheet, cn } from './components/ui'
 import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
@@ -82,10 +83,11 @@ function Account({ email }: { email: string }) {
   )
 }
 
-type View = 'list' | 'timeline'
+type View = 'list' | 'timeline' | 'sommelier'
 const VIEWS: { id: View; label: string }[] = [
   { id: 'list', label: 'Bottles' },
   { id: 'timeline', label: 'Timeline' },
+  { id: 'sommelier', label: 'Sommelier' },
 ]
 
 type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | null
@@ -200,11 +202,13 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           )}
         </div>
 
-        <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />
+        {view === 'sommelier' && <Sommelier bottles={inCellar} onSelect={select} />}
 
-        {status === null && <DontMiss bottles={inCellar} onSelect={select} />}
+        {view !== 'sommelier' && <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />}
 
-        <section aria-labelledby="bottles" className="flex flex-col gap-5 border-t pt-8">
+        {view !== 'sommelier' && status === null && <DontMiss bottles={inCellar} onSelect={select} />}
+
+        <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', view === 'sommelier' && 'hidden')}>
           <div className="flex items-baseline justify-between gap-4">
             <h2 id="bottles" className="font-serif text-3xl font-light">
               {status ?? (view === 'list' ? 'All bottles' : 'Drinking timeline')}

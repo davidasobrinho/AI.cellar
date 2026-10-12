@@ -1,10 +1,10 @@
-import { GoogleAIBackend, Schema, getAI, getGenerativeModel } from 'firebase/ai'
+import { Schema } from 'firebase/ai'
 import { REGIONS, TIERS, WINE_TYPES } from '../types'
 import type { Bottle } from '../types'
-import { app, appCheckEnabled } from './firebase'
+import { aiEnabled, generateJson } from './ai'
 
-// Reads one or two label photos with Gemini, through the Firebase project.
-export const scanEnabled = appCheckEnabled
+// Reads one or two label photos with Gemini.
+export const scanEnabled = aiEnabled
 
 export type ScannedBottle = Pick<
   Bottle,
@@ -55,19 +55,13 @@ For what is not printed (drinking window, serving temperature, decanting, closur
 The current year is ${new Date().getFullYear()}.`
 
 export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
-  const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), {
-    model: 'gemini-3.8-flash',
-    systemInstruction: SYSTEM,
-    generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
-  })
-  const result = await model.generateContent([
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shaped by the schema above
+  const r = await generateJson<any>(
+    SYSTEM,
+    schema,
     'Read these wine label photos (front and/or back) and fill in the cellar record.',
-    ...photos.map((dataUrl) => {
-      const [meta, data] = dataUrl.split(',')
-      return { type: 'inlineData' as const, inlineData: { mimeType: meta.slice(5, meta.indexOf(';')), data } }
-    }),
-  ])
-  const r = JSON.parse(result.response.text())
+    photos,
+  )
   const hasWindow = r.drinkFrom > 0 && r.peakFrom >= r.drinkFrom && r.peakTo >= r.peakFrom && r.drinkUntil >= r.peakTo
 
   return {
@@ -97,28 +91,4 @@ export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
       backLabel: r.backLabel,
     },
   }
-}
-
-const MAX_SIDE = 1600
-
-// Shrinks a phone photo before sending it, as a JPEG data URL.
-export function resizeToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(img.width * scale)
-      canvas.height = Math.round(img.height * scale)
-      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.85))
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Unreadable image'))
-    }
-    img.src = url
-  })
 }

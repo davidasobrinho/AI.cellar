@@ -1,29 +1,41 @@
-import type { Bottle, Region, Tier, WineType } from '../types'
+import type { Bottle, DrinkWindow, Region, Tier, WineType } from '../types'
 
-// Drinking windows are rule-of-thumb estimates by style, region and tier.
-// They assume good, stable storage and say nothing about one producer or one year.
+// When to drink a bottle. A window set for the wine itself (read from the label
+// or typed in) wins. Otherwise it is a rule-of-thumb estimate by style, region
+// and level. Both assume good, stable storage.
 
-export type WindowStatus =
-  | 'Too young'
-  | 'Approaching'
-  | 'Prime'
-  | 'Declining'
-  | 'Past prime'
-  | 'Ready any time'
-  | 'Unknown'
+export type WindowStatus = 'Drink soon' | 'At peak' | 'Ready' | 'Wait' | 'Past best' | 'Ready any time' | 'Unknown'
+
+// Most time-sensitive first. Used to sort lists and order the filters.
+export const STATUS_ORDER: WindowStatus[] = [
+  'Drink soon',
+  'At peak',
+  'Ready',
+  'Ready any time',
+  'Wait',
+  'Past best',
+  'Unknown',
+]
+
+export const STATUS_DESCRIPTION: Record<WindowStatus, string> = {
+  'Drink soon': 'Past its peak and starting to fade. Open in the next year or so.',
+  'At peak': 'Drinking at its best right now. A great moment to open it.',
+  Ready: 'Drinkable now, but will still improve with a few more years.',
+  Wait: 'Still too young. Leave it in the cellar for now.',
+  'Past best': 'Likely beyond its window. Open one soon to check.',
+  'Ready any time': 'Aged before bottling. It does not improve in the bottle.',
+  Unknown: 'Add a vintage to get an estimate.',
+}
 
 export interface DrinkingWindow {
   status: WindowStatus
-  // Calendar years. Null when the wine has no meaningful window.
-  drinkFrom: number | null
-  peakFrom: number | null
-  peakUntil: number | null
-  drinkUntil: number | null
-  confidence: 'Medium' | 'Low' | null
-  advice: string
+  // Null when the wine has no meaningful window.
+  dates: DrinkWindow | null
+  source: 'This wine' | 'Its style' | null
+  hint: string
 }
 
-// Years after the vintage: drink from, peak from, peak until, drink until.
+// Years after the vintage: drink from, peak from, peak to, drink until.
 type Offsets = [number, number, number, number]
 
 const STILL: Record<'Red' | 'White', Record<Tier, Offsets>> = {
@@ -63,53 +75,64 @@ function offsetsFor(type: WineType, region: Region, tier: Tier): Offsets | null 
   return FIXED[type] ?? null
 }
 
-const ADVICE: Record<WindowStatus, string> = {
-  'Too young': 'Wait. It is likely still closed.',
-  Approaching: 'Enjoyable now, better soon.',
-  Prime: 'Good to drink now.',
-  Declining: 'Drink soon. It is past its best years.',
-  'Past prime': 'Probably past its best. Open one to check.',
-  'Ready any time': 'Ready when bottled. It does not improve in the bottle.',
-  Unknown: 'Add a vintage and type to get an estimate.',
-}
+type Windowed = Pick<Bottle, 'type' | 'region' | 'tier' | 'vintage' | 'window'>
 
-const NONE = { drinkFrom: null, peakFrom: null, peakUntil: null, drinkUntil: null }
-
-export function drinkingWindow(
-  bottle: Pick<Bottle, 'type' | 'region' | 'tier' | 'vintage'>,
-  year = new Date().getFullYear(),
-): DrinkingWindow {
-  if (STABLE.includes(bottle.type)) {
-    return { ...NONE, status: 'Ready any time', confidence: 'Medium', advice: ADVICE['Ready any time'] }
-  }
+// The style estimate alone, for showing next to a window set by hand or for prefilling one.
+export function styleWindow(bottle: Windowed): DrinkWindow | null {
   const offsets = offsetsFor(bottle.type, bottle.region, bottle.tier)
-  if (bottle.vintage === null || offsets === null) {
-    return { ...NONE, status: 'Unknown', confidence: null, advice: ADVICE.Unknown }
-  }
-  const [drinkFrom, peakFrom, peakUntil, drinkUntil] = offsets.map((o) => bottle.vintage! + o)
-  let status: WindowStatus
-  if (year < drinkFrom) status = 'Too young'
-  else if (year < peakFrom) status = 'Approaching'
-  else if (year <= peakUntil) status = 'Prime'
-  else if (year <= drinkUntil) status = 'Declining'
-  else status = 'Past prime'
-  // The rules know Portuguese styles. Anything else gets a weaker estimate.
-  const confidence = bottle.region === 'Outside Portugal' ? 'Low' : 'Medium'
-  return { status, drinkFrom, peakFrom, peakUntil, drinkUntil, confidence, advice: ADVICE[status] }
+  if (bottle.vintage === null || offsets === null) return null
+  const [drinkFrom, peakFrom, peakTo, drinkUntil] = offsets.map((o) => bottle.vintage! + o)
+  return { drinkFrom, peakFrom, peakTo, drinkUntil }
 }
 
-const URGENCY: WindowStatus[] = ['Declining', 'Prime', 'Ready any time', 'Approaching']
+function statusOf(w: DrinkWindow, year: number): WindowStatus {
+  if (year < w.drinkFrom) return 'Wait'
+  if (year < w.peakFrom) return 'Ready'
+  if (year <= w.peakTo) return 'At peak'
+  if (year <= w.drinkUntil) return 'Drink soon'
+  return 'Past best'
+}
 
-// Bottles worth opening now, most time-sensitive first.
-export function openTonight<T extends Bottle>(bottles: T[], year = new Date().getFullYear()): T[] {
+function hintFor(status: WindowStatus, w: DrinkWindow | null, year: number): string {
+  if (!w) return status === 'Ready any time' ? 'Open whenever you like' : 'No estimate yet'
+  const years = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`
+  switch (status) {
+    case 'Wait':
+      return `Ready in ${years(w.drinkFrom - year)} (${w.drinkFrom})`
+    case 'Ready':
+      return `Peaks in ${years(w.peakFrom - year)} (${w.peakFrom})`
+    case 'At peak':
+      return w.peakTo === year ? 'Last year at peak' : `At peak until ${w.peakTo}`
+    case 'Drink soon':
+      return `Best before end of ${w.drinkUntil}`
+    default:
+      return `Window closed in ${w.drinkUntil}`
+  }
+}
+
+export function drinkingWindow(bottle: Windowed, year = new Date().getFullYear()): DrinkingWindow {
+  const own = bottle.window ?? null
+  if (!own && STABLE.includes(bottle.type)) {
+    return { status: 'Ready any time', dates: null, source: 'Its style', hint: hintFor('Ready any time', null, year) }
+  }
+  const dates = own ?? styleWindow(bottle)
+  if (!dates) return { status: 'Unknown', dates: null, source: null, hint: hintFor('Unknown', null, year) }
+  const status = statusOf(dates, year)
+  return { status, dates, source: own ? 'This wine' : 'Its style', hint: hintFor(status, dates, year) }
+}
+
+// The few bottles whose window is closing: past best, fading, or in their last year of peak.
+export function closingFirst<T extends Bottle>(bottles: T[], year = new Date().getFullYear(), limit = 3): T[] {
   return bottles
     .filter((b) => b.quantity > 0)
     .map((b) => ({ b, w: drinkingWindow(b, year) }))
-    .filter(({ w }) => URGENCY.includes(w.status))
-    .sort(
-      (x, y) =>
-        URGENCY.indexOf(x.w.status) - URGENCY.indexOf(y.w.status) ||
-        (x.w.drinkUntil ?? Infinity) - (y.w.drinkUntil ?? Infinity),
+    .filter(
+      ({ w }) =>
+        w.status === 'Past best' ||
+        w.status === 'Drink soon' ||
+        (w.status === 'At peak' && w.dates!.peakTo - year <= 1),
     )
+    .sort((x, y) => x.w.dates!.drinkUntil - y.w.dates!.drinkUntil)
+    .slice(0, limit)
     .map(({ b }) => b)
 }

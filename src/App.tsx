@@ -1,31 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { BottleForm } from './BottleForm'
+import { Plus } from 'lucide-react'
+import { BottleForm } from './components/BottleForm'
+import { WineDetail } from './components/WineDetail'
+import { Button, Sheet, cn } from './components/ui'
+import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
 import { auth, firebaseEnabled } from './lib/firebase'
-import { BAND_LABELS, cellarValue, euros, priceBand } from './lib/price'
 import { useFirebaseStore, useLocalStore } from './lib/store'
 import type { Store } from './lib/store'
-import { drinkingWindow, openTonight } from './lib/windows'
+import { STATUS_ORDER, drinkingWindow } from './lib/windows'
 import type { WindowStatus } from './lib/windows'
-import { RATINGS } from './types'
-import type { Bottle, Rating } from './types'
-
-type View = { name: 'list' } | { name: 'form'; bottle: Bottle | null } | { name: 'detail'; id: string }
+import type { Bottle } from './types'
 
 const ALL = 'all'
 
-function Sticker({ price }: { price: number | null }) {
-  const band = priceBand(price)
-  return <span className={`sticker ${band ?? 'none'}`} title={band ? BAND_LABELS[band] : 'No price yet'} />
+function Brand() {
+  return <h1 className="font-serif text-2xl font-light tracking-[0.35em] md:text-3xl">CAVE SOBRI</h1>
 }
 
-function Status({ status }: { status: WindowStatus }) {
-  return <span className={`status s-${status.replace(/ /g, '-').toLowerCase()}`}>{status}</span>
-}
-
-function title(b: Bottle) {
-  return [b.producer, b.name, b.vintage].filter(Boolean).join(' ')
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-5 text-center">
+      <Brand />
+      {children}
+    </main>
+  )
 }
 
 export default function App() {
@@ -41,16 +41,15 @@ function SharedApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   useEffect(() => onAuthStateChanged(auth!, setUser), [])
 
-  if (user === undefined) return <main className="empty">Loading…</main>
+  if (user === undefined) return <Centered>Loading…</Centered>
   if (user === null || !user.email) {
     return (
-      <main className="signin">
-        <h1>Private Sommelier</h1>
-        <p className="meta">Sign in to see the cellars shared with you.</p>
-        <button className="primary" onClick={() => void signInWithPopup(auth!, new GoogleAuthProvider())}>
+      <Centered>
+        <p className="text-sm text-muted-foreground">Sign in to see the cellars shared with you.</p>
+        <Button className="h-11 px-6" onClick={() => void signInWithPopup(auth!, new GoogleAuthProvider())}>
           Sign in with Google
-        </button>
-      </main>
+        </Button>
+      </Centered>
     )
   }
   return <SignedInApp email={user.email} />
@@ -60,275 +59,213 @@ function SignedInApp({ email }: { email: string }) {
   const store = useFirebaseStore(email)
   if (!store.ready) {
     return (
-      <main className="empty">
-        {store.error ? `Problem ${store.error}` : 'Loading your cellar…'}
-        <p>
-          {email}
-          <button className="link" onClick={() => void signOut(auth!)}>
-            Sign out
-          </button>
+      <Centered>
+        <p className={cn('text-sm', store.error ? 'text-destructive' : 'text-muted-foreground')}>
+          {store.error ? `Problem ${store.error}` : 'Loading your cellar…'}
         </p>
-      </main>
+        <Account email={email} />
+      </Centered>
     )
   }
   return <CellarApp store={store} account={email} />
 }
 
+function Account({ email }: { email: string }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      {email} ·{' '}
+      <button type="button" className="underline underline-offset-4" onClick={() => void signOut(auth!)}>
+        Sign out
+      </button>
+    </p>
+  )
+}
+
+type View = 'list' | 'timeline'
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'list', label: 'Bottles' },
+  { id: 'timeline', label: 'Timeline' },
+]
+
+type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | null
+
 function CellarApp({ store, account }: { store: Store; account?: string }) {
   const { data } = store
-  const [view, setView] = useState<View>({ name: 'list' })
-  const [tab, setTab] = useState<'cellar' | 'tonight'>('cellar')
+  const [view, setView] = useState<View>('list')
+  const [status, setStatus] = useState<WindowStatus | null>(null)
   const [cellarId, setCellarId] = useState(ALL)
-  const [search, setSearch] = useState('')
+  const [panel, setPanel] = useState<Panel>(null)
 
   const inCellar = useMemo(
     () => data.bottles.filter((b) => cellarId === ALL || b.cellarId === cellarId),
     [data.bottles, cellarId],
   )
-  const value = cellarValue(inCellar)
-  const visible = (tab === 'tonight' ? openTonight(inCellar) : inCellar).filter((b) =>
-    title(b).toLowerCase().includes(search.toLowerCase()),
-  )
+  const visible = useMemo(() => {
+    const rank = (b: Bottle) => STATUS_ORDER.indexOf(drinkingWindow(b).status)
+    const until = (b: Bottle) => drinkingWindow(b).dates?.drinkUntil ?? Infinity
+    return inCellar
+      .filter((b) => status === null || drinkingWindow(b).status === status)
+      .sort((a, b) => rank(a) - rank(b) || until(a) - until(b))
+  }, [inCellar, status])
+
+  const selected = data.cellars.find((c) => c.id === cellarId)
+  const detail = panel?.kind === 'detail' ? data.bottles.find((b) => b.id === panel.id) : undefined
+  const select = (b: Bottle) => setPanel({ kind: 'detail', id: b.id })
 
   const addCellar = () => {
     const name = window.prompt('Name of the new cellar')?.trim()
     if (name) store.addCellar(name)
   }
-
-  const selected = data.cellars.find((c) => c.id === cellarId)
   const share = () => {
     const email = window.prompt(`Google account email of the person to share "${selected!.name}" with`)?.trim()
     if (email) store.shareCellar!(selected!.id, email)
   }
 
-  if (view.name === 'form') {
-    return (
-      <main>
-        <BottleForm
-          bottle={view.bottle}
-          cellars={data.cellars}
-          defaultCellarId={cellarId === ALL ? data.cellars[0].id : cellarId}
-          onSave={(bottle) => {
-            store.putBottle(bottle)
-            setView({ name: 'list' })
-          }}
-          onCancel={() => setView({ name: 'list' })}
-        />
-      </main>
-    )
-  }
-
-  const detail = view.name === 'detail' ? data.bottles.find((b) => b.id === view.id) : undefined
-  if (detail) {
-    return (
-      <main>
-        <BottleDetail
-          bottle={detail}
-          cellarName={data.cellars.find((c) => c.id === detail.cellarId)?.name ?? ''}
-          onBack={() => setView({ name: 'list' })}
-          onEdit={() => setView({ name: 'form', bottle: detail })}
-          onChange={store.putBottle}
-          onDelete={() => {
-            store.deleteBottle(detail)
-            setView({ name: 'list' })
-          }}
-        />
-      </main>
-    )
-  }
-
   return (
-    <main>
+    <div className="min-h-dvh">
       <header>
-        <h1>Private Sommelier</h1>
-        <div className="row">
-          <select value={cellarId} onChange={(e) => setCellarId(e.target.value)} aria-label="Cellar">
-            <option value={ALL}>All cellars</option>
-            {data.cellars.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button onClick={addCellar}>New cellar</button>
-          {store.shareCellar && selected && <button onClick={share}>Share</button>}
+        <div className="mx-auto grid h-24 max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5">
+          <span aria-hidden="true" />
+          <Brand />
+          <div className="flex justify-end">
+            <Button onClick={() => setPanel({ kind: 'form', bottle: null })}>
+              <Plus aria-hidden="true" />
+              <span className="hidden sm:inline">Add bottle</span>
+              <span className="sr-only sm:hidden">Add bottle</span>
+            </Button>
+          </div>
         </div>
-        {selected?.members && selected.members.length > 1 && (
-          <p className="meta">Shared with {selected.members.filter((m) => m !== account).join(', ')}</p>
-        )}
-        {account && (
-          <p className="meta">
-            {account}
-            <button className="link" onClick={() => void signOut(auth!)}>
-              Sign out
-            </button>
-          </p>
-        )}
+        <nav aria-label="Views" className="border-y">
+          <div className="mx-auto flex max-w-6xl justify-center gap-8 px-5">
+            {VIEWS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setView(v.id)}
+                aria-current={view === v.id ? 'page' : undefined}
+                className={cn(
+                  '-mb-px h-12 border-b-2 text-sm transition-colors',
+                  view === v.id
+                    ? 'border-foreground font-normal text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </nav>
       </header>
 
-      {store.error && <p className="error">Problem {store.error}</p>}
-
-      <section className="summary">
-        <div>
-          <strong>{value.bottles}</strong>
-          <span>bottles</span>
+      <main className="mx-auto flex max-w-6xl flex-col gap-14 px-5 py-10">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+            <select
+              aria-label="Cellar"
+              value={cellarId}
+              onChange={(e) => setCellarId(e.target.value)}
+              className="h-9 border-b border-input bg-transparent pr-2 outline-none focus-visible:border-primary"
+            >
+              <option value={ALL}>All cellars</option>
+              {data.cellars.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <Button variant="ghost" className="h-9" onClick={addCellar}>
+              New cellar
+            </Button>
+            {store.shareCellar && selected && (
+              <Button variant="ghost" className="h-9" onClick={share}>
+                Share
+              </Button>
+            )}
+          </div>
+          {selected?.members && selected.members.length > 1 && (
+            <p className="text-xs text-muted-foreground">
+              Shared with {selected.members.filter((m) => m !== account).join(', ')}
+            </p>
+          )}
+          {store.error && (
+            <p role="alert" className="text-sm text-destructive">
+              Problem {store.error}
+            </p>
+          )}
         </div>
-        <div>
-          <strong>{euros(value.total)}</strong>
-          <span>
-            value today
-            {value.pricedBottles < value.bottles && `, ${value.bottles - value.pricedBottles} without price`}
-          </span>
-        </div>
-        <div>
-          <strong>{value.average === null ? '–' : euros(value.average)}</strong>
-          <span>average bottle</span>
-        </div>
-      </section>
 
-      <nav className="tabs">
-        <button className={tab === 'cellar' ? 'active' : ''} onClick={() => setTab('cellar')}>
-          Cellar
-        </button>
-        <button className={tab === 'tonight' ? 'active' : ''} onClick={() => setTab('tonight')}>
-          Open tonight
-        </button>
-      </nav>
+        <CellarSummary bottles={inCellar} activeStatus={status} onStatusChange={setStatus} />
 
-      <input type="search" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+        {status === null && <DontMiss bottles={inCellar} onSelect={select} />}
 
-      <ul className="bottles">
-        {visible.map((b) => (
-          <li key={b.id} onClick={() => setView({ name: 'detail', id: b.id })}>
-            <Sticker price={b.priceToday} />
-            <div className="grow">
-              <div className="name">{title(b)}</div>
-              <div className="meta">
-                {b.type} · {b.region} · {b.quantity} {b.quantity === 1 ? 'bottle' : 'bottles'}
-              </div>
-            </div>
-            <Status status={drinkingWindow(b).status} />
-          </li>
-        ))}
-      </ul>
-      {visible.length === 0 && (
-        <p className="empty">
-          {tab === 'tonight' ? 'Nothing is ready to open yet.' : 'No bottles yet. Add your first one.'}
-        </p>
-      )}
+        <section aria-labelledby="bottles" className="flex flex-col gap-5 border-t pt-8">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 id="bottles" className="font-serif text-3xl font-light">
+              {status ?? (view === 'list' ? 'All bottles' : 'Drinking timeline')}
+            </h2>
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              {visible.length} {visible.length === 1 ? 'wine' : 'wines'}
+            </span>
+          </div>
 
-      <button className="primary add" onClick={() => setView({ name: 'form', bottle: null })}>
-        Add bottle
-      </button>
-    </main>
-  )
-}
+          {view === 'list' ? (
+            <WineList bottles={visible} onSelect={select} />
+          ) : (
+            <TimelineView bottles={visible} onSelect={select} />
+          )}
 
-interface DetailProps {
-  bottle: Bottle
-  cellarName: string
-  onBack: () => void
-  onEdit: () => void
-  onChange: (bottle: Bottle) => void
-  onDelete: () => void
-}
-
-function BottleDetail({ bottle, cellarName, onBack, onEdit, onChange, onDelete }: DetailProps) {
-  const [rating, setRating] = useState<Rating | null>(null)
-  const [note, setNote] = useState('')
-  const w = drinkingWindow(bottle)
-  const band = priceBand(bottle.priceToday)
-
-  const open = () => {
-    onChange({
-      ...bottle,
-      quantity: bottle.quantity - 1,
-      openings: [{ date: new Date().toISOString(), rating, note }, ...bottle.openings],
-    })
-    setRating(null)
-    setNote('')
-  }
-
-  const undo = () => onChange({ ...bottle, quantity: bottle.quantity + 1, openings: bottle.openings.slice(1) })
-
-  return (
-    <article className="detail">
-      <button onClick={onBack}>Back</button>
-      <h2>{title(bottle)}</h2>
-      <p className="meta">
-        {bottle.type} · {bottle.region}
-        {(bottle.type === 'Red' || bottle.type === 'White') && ` · ${bottle.tier}`}
-      </p>
-
-      <section className="card">
-        <Status status={w.status} />
-        <p>{w.advice}</p>
-        {w.drinkFrom !== null && (
-          <p className="meta">
-            Drink {w.drinkFrom} to {w.drinkUntil}, best {w.peakFrom} to {w.peakUntil}. Confidence:{' '}
-            {w.confidence?.toLowerCase()}.
-          </p>
-        )}
-        <p className="meta">An estimate from the style of the wine. It assumes good storage.</p>
-      </section>
-
-      <section className="card">
-        <p>
-          <Sticker price={bottle.priceToday} />{' '}
-          {band === null ? 'No price yet' : `${euros(bottle.priceToday!)} today · ${BAND_LABELS[band]}`}
-        </p>
-        {bottle.pricePaid !== null && <p className="meta">Paid {euros(bottle.pricePaid)}</p>}
-        <p className="meta">
-          {bottle.quantity} in {cellarName}
-          {bottle.location && `, ${bottle.location}`}
-        </p>
-        {bottle.notes && <p>{bottle.notes}</p>}
-      </section>
-
-      <section className="card">
-        <h3>Open a bottle</h3>
-        <div className="ratings">
-          {RATINGS.map((r) => (
-            <button key={r} className={rating === r ? 'active' : ''} onClick={() => setRating(rating === r ? null : r)}>
-              {r}
-            </button>
-          ))}
-        </div>
-        <input placeholder="Occasion, food, what you thought" value={note} onChange={(e) => setNote(e.target.value)} />
-        <button className="primary" disabled={bottle.quantity === 0} onClick={open}>
-          Mark one as opened
-        </button>
-      </section>
-
-      {bottle.openings.length > 0 && (
-        <section className="card">
-          <h3>Opened</h3>
-          <ul className="openings">
-            {bottle.openings.map((o, i) => (
-              <li key={o.date}>
-                {new Date(o.date).toLocaleDateString('en-GB')}
-                {o.rating && ` · ${o.rating}`}
-                {o.note && ` · ${o.note}`}
-                {i === 0 && (
-                  <button className="link" onClick={undo}>
-                    Undo
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-5 bg-cork/45" aria-hidden="true" />
+              Drinking window
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-5 bg-status-peak" aria-hidden="true" />
+              Peak
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-0.5 bg-foreground" aria-hidden="true" />
+              Today
+            </span>
+          </div>
         </section>
-      )}
+      </main>
 
-      <div className="actions">
-        <button
-          className="danger"
-          onClick={() => window.confirm(`Remove ${title(bottle)} from the cellar?`) && onDelete()}
-        >
-          Remove
-        </button>
-        <button onClick={onEdit}>Edit</button>
-      </div>
-    </article>
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-5 py-10 text-center">
+          <span className="font-normal">SOBRI</span>
+          <span className="text-xs text-muted-foreground">Sealed with Portuguese cork · Porto</span>
+          {account && <Account email={account} />}
+        </div>
+      </footer>
+
+      <Sheet open={panel !== null} onClose={() => setPanel(null)}>
+        {detail && (
+          <WineDetail
+            key={detail.id}
+            bottle={detail}
+            cellarName={data.cellars.find((c) => c.id === detail.cellarId)?.name ?? ''}
+            onChange={store.putBottle}
+            onEdit={() => setPanel({ kind: 'form', bottle: detail })}
+            onDelete={() => {
+              store.deleteBottle(detail)
+              setPanel(null)
+            }}
+          />
+        )}
+        {panel?.kind === 'form' && (
+          <BottleForm
+            bottle={panel.bottle}
+            cellars={data.cellars}
+            defaultCellarId={cellarId === ALL ? data.cellars[0].id : cellarId}
+            onSave={(bottle) => {
+              store.putBottle(bottle)
+              setStatus(null)
+              setPanel({ kind: 'detail', id: bottle.id })
+            }}
+          />
+        )}
+      </Sheet>
+    </div>
   )
 }

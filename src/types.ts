@@ -43,6 +43,30 @@ export interface Opening {
   note: string
 }
 
+// Calendar years.
+export interface DrinkWindow {
+  drinkFrom: number
+  peakFrom: number
+  peakTo: number
+  drinkUntil: number
+}
+
+// What the front and back labels say, plus serving advice. Empty string when unknown.
+export interface LabelDetails {
+  designation: string
+  classification: string
+  subRegion: string
+  alcohol: number | null
+  volume: string
+  ageing: string
+  closure: string
+  lot: string
+  bottledBy: string
+  serveAt: string
+  decant: string
+  backLabel: string
+}
+
 export interface Bottle {
   id: string
   cellarId: string
@@ -60,6 +84,12 @@ export interface Bottle {
   notes: string
   openings: Opening[]
   addedAt: string
+  // Added later, so bottles saved before them do not have these three.
+  grapes?: string
+  // A window set for this wine, by the label reading or by hand. Without it,
+  // the window is estimated from the style.
+  window?: DrinkWindow | null
+  label?: LabelDetails | null
 }
 
 export interface Cellar {

@@ -18,10 +18,8 @@ export const app = firebaseEnabled ? initializeApp(config) : null
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
 
-// App Check proves a request comes from this app. Firebase requires it before
-// it lets the app call Gemini, so label reading is on only when a key is set.
+// App Check proves a request comes from this app. It is used when a key is set.
 const appCheckKey: string | undefined = import.meta.env.VITE_APPCHECK_SITE_KEY
-export const appCheckEnabled = Boolean(app && appCheckKey)
 
 if (app && appCheckKey) {
   // On a development machine this prints a debug token to register in the console.

@@ -1,10 +1,10 @@
 import { GoogleAIBackend, getAI, getGenerativeModel } from 'firebase/ai'
 import type { Schema } from 'firebase/ai'
-import { app, appCheckEnabled } from './firebase'
+import { app, firebaseEnabled } from './firebase'
 
-// Gemini, called through the Firebase project. Firebase only allows it once
-// App Check is set up, so everything built on it is off until then.
-export const aiEnabled = appCheckEnabled
+// Gemini, called through the Firebase project (AI Logic must be turned on there).
+// App Check, when a site key is set, adds proof that a request comes from this app.
+export const aiEnabled = firebaseEnabled
 
 // Asks for an answer in the shape of the schema. Photos are JPEG or PNG data URLs.
 export async function generateJson<T>(system: string, schema: Schema, prompt: string, photos: string[] = []): Promise<T> {

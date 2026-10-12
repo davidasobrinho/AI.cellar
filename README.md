@@ -1,27 +1,24 @@
-# Private Sommelier
+# Cave Sobri
 
 A private cellar app for Portuguese wine. It tracks the bottles you own, tells you when each one is good to drink, and shows what the cellar is worth.
 
 ## What works today
 
-- Add, edit and remove bottles by hand, in one or more cellars.
-- Drinking window for each bottle: too young, approaching, prime, declining or past prime, with the years behind it.
-- "Open tonight": the bottles worth opening now, most time-sensitive first.
-- Mark a bottle as opened, with a rating (liked, OK, disliked) and a note. Undo if it was a mistake.
-- Price stickers: green below €10, blue €10 to €30, red above €30.
-- Cellar value and average bottle price.
-
-Data is stored in the browser for now, on one device.
+- Sign in with Google. Cellars are saved in Firebase and can be shared with other Google accounts.
+- Add, edit and remove bottles, in one or more cellars.
+- A drinking window for each bottle (wait, ready, at peak, drink soon, past best), as a list and as a timeline.
+- "Don't miss these": the bottles whose window is closing.
+- Open a bottle with a rating (liked, OK, disliked) and a note. Undo if it was a mistake.
+- Price stickers: green below €10, blue €10 to €30, red above €30. Cellar value and average bottle price.
+- Reading a bottle from photos of its labels with Gemini, once App Check is set up (see below). Not yet tested against a live project.
 
 ## Not built yet
 
-- Adding a bottle from a photo of the label.
-- Sync between devices and family members.
 - Price lookup, food and occasion pairing, restaurant menu help, deals.
 
 ## How the drinking window is estimated
 
-From rules of thumb by wine type, Portuguese region and level (everyday, reserva, top). See `src/lib/windows.ts`. It is an estimate of the style, not of one producer or one year, and it assumes good storage.
+A window read from the label photos, or typed in, is used as given. Without one, it comes from rules of thumb by wine type, Portuguese region and level (everyday, reserva, top), in `src/lib/windows.ts`. Both are estimates and assume good storage.
 
 ## Run it
 
@@ -29,6 +26,8 @@ From rules of thumb by wine type, Portuguese region and level (everyday, reserva
 npm install
 npm run dev
 ```
+
+Copy `.env.example` to `.env.local` and fill it in to use Firebase. Without it, or with `npm run dev -- --mode offline`, the cellar is kept in the browser with no sign-in.
 
 ```bash
 npm test

@@ -4,7 +4,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
 import { BottleForm } from './components/BottleForm'
-import { Journal } from './components/Journal'
+import { Journal, JournalForm } from './components/Journal'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
 import { Button, Field, SectionTitle, Sheet, SheetHeader, cn } from './components/ui'
@@ -109,7 +109,41 @@ const LAYOUTS: { id: Layout; label: string }[] = [
   { id: 'timeline', label: 'Timeline' },
 ]
 
-type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | { kind: 'share'; cellarId: string } | null
+type Panel =
+  | { kind: 'add' }
+  | { kind: 'detail'; id: string }
+  | { kind: 'form'; bottle: Bottle | null }
+  | { kind: 'tasting' }
+  | { kind: 'share'; cellarId: string }
+  | null
+
+// The one way to add a wine: it either goes in a cellar or in the journal.
+function AddChooser({ onCellar, onJournal }: { onCellar: () => void; onJournal: () => void }) {
+  const options = [
+    { label: 'I have this bottle', hint: 'Add it to a cellar, to track it and know when to drink it.', go: onCellar },
+    { label: 'I drank it, or want to', hint: 'Rate it, or save it for later. It goes in your journal and shapes your palate.', go: onJournal },
+  ]
+  return (
+    <div className="flex flex-col">
+      <SheetHeader eyebrow="Adicionar" title="Add a wine">
+        Both start the same way: snap the label, or type it in.
+      </SheetHeader>
+      <div className="flex flex-col gap-3 p-6">
+        {options.map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            onClick={o.go}
+            className="flex flex-col gap-1 rounded-md border p-5 text-left transition-colors hover:border-foreground/40 hover:bg-accent"
+          >
+            <span className="font-serif text-2xl">{o.label}</span>
+            <span className="text-sm text-muted-foreground">{o.hint}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Chip({ active, className, ...props }: ComponentProps<'button'> & { active: boolean }) {
   return (
@@ -264,10 +298,10 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <span aria-hidden="true" />
           <Brand title={title} />
           <div className="flex justify-end">
-            <Button onClick={() => setPanel({ kind: 'form', bottle: null })}>
+            <Button onClick={() => setPanel({ kind: 'add' })}>
               <Plus aria-hidden="true" />
-              <span className="hidden sm:inline">Add bottle</span>
-              <span className="sr-only sm:hidden">Add bottle</span>
+              <span className="hidden sm:inline">Add a wine</span>
+              <span className="sr-only sm:hidden">Add a wine</span>
             </Button>
           </div>
         </div>
@@ -449,6 +483,19 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           />
         )}
         {sharing && <ShareForm cellar={sharing} account={account} store={store} />}
+        {panel?.kind === 'add' && (
+          <AddChooser onCellar={() => setPanel({ kind: 'form', bottle: null })} onJournal={() => setPanel({ kind: 'tasting' })} />
+        )}
+        {panel?.kind === 'tasting' && (
+          <JournalForm
+            entry={null}
+            onSave={(entry) => {
+              store.saveJournal({ ...store.journal, entries: [entry, ...store.journal.entries] })
+              setPanel(null)
+              setView('journal')
+            }}
+          />
+        )}
       </Sheet>
     </div>
   )

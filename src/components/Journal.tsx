@@ -75,7 +75,7 @@ const numberOrNull = (value: string): number | null => {
   return value.trim() === '' || Number.isNaN(n) ? null : n
 }
 
-function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry: Tasting) => void }) {
+export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry: Tasting) => void }) {
   const [draft, setDraft] = useState<Tasting>(() => (entry ? { ...blank(), ...entry, stars: starsOf(entry) } : blank()))
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -197,7 +197,7 @@ interface Props {
 }
 
 export function Journal({ journal, bottles, friendJournals, canShare, profile, onSave, onSaveProfile, onSelectBottle }: Props) {
-  const [editing, setEditing] = useState<Tasting | 'new' | null>(null)
+  const [editing, setEditing] = useState<Tasting | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const rated = ratedWines(bottles, journal.entries)
 
@@ -249,13 +249,9 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
           Your journal
         </h2>
         <p className="text-sm text-muted-foreground">
-          Snap a wine, save it for later, rate it when you drink it. Every rating shapes your palate and the sommelier's
-          advice.
+          Wines you drank or want to try. Add one with the + at the top: snap it, rate it now or save it for later. Every
+          rating shapes your palate and the sommelier's advice.
         </p>
-        <Button className="h-11 px-6" onClick={() => setEditing('new')}>
-          <Camera aria-hidden="true" />
-          Snap or add a wine
-        </Button>
       </div>
 
       <PalateSummary rated={rated} profile={profile} onSave={onSaveProfile} />
@@ -386,7 +382,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
       )}
 
       <Sheet open={editing !== null} onClose={() => setEditing(null)}>
-        {editing !== null && <JournalForm key={editing === 'new' ? 'new' : editing.id} entry={editing === 'new' ? null : editing} onSave={save} />}
+        {editing !== null && <JournalForm key={editing.id} entry={editing} onSave={save} />}
       </Sheet>
     </section>
   )

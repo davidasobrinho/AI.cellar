@@ -7,6 +7,7 @@ import type { WindowStatus } from '../lib/windows'
 import type { Bottle } from '../types'
 import { STATUS_BG, StatusBadge, Sticker, WindowBar } from './status'
 import { cn } from './ui'
+import { t } from '../lib/i18n'
 
 const YEAR = new Date().getFullYear()
 const wholeEuros = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
@@ -34,12 +35,12 @@ export function CellarSummary({ bottles, activeStatus, onStatusChange }: Summary
   return (
     <section aria-label="Cellar overview" className="flex flex-col gap-8">
       <dl className="grid grid-cols-3 divide-x border-y">
-        <Stat label="Bottles" value={value.bottles.toString()} />
-        <Stat label="Wines" value={bottles.length.toString()} />
+        <Stat label={t('Bottles')} value={value.bottles.toString()} />
+        <Stat label={t('Wines')} value={bottles.length.toString()} />
         <Stat
-          label="Est. value"
+          label={t('Est. value')}
           value={wholeEuros.format(value.total)}
-          note={value.pricedBottles < value.bottles ? `${value.bottles - value.pricedBottles} without price` : undefined}
+          note={value.pricedBottles < value.bottles ? t('{n} without price', { n: value.bottles - value.pricedBottles }) : undefined}
         />
       </dl>
 
@@ -61,7 +62,7 @@ export function CellarSummary({ bottles, activeStatus, onStatusChange }: Summary
 
           <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Filter by drinking status">
             <FilterChip active={activeStatus === null} onClick={() => onStatusChange(null)}>
-              All
+              {t('All')}
             </FilterChip>
             {counts.map(({ status, n }) => (
               <FilterChip
@@ -70,7 +71,7 @@ export function CellarSummary({ bottles, activeStatus, onStatusChange }: Summary
                 onClick={() => onStatusChange(activeStatus === status ? null : status)}
               >
                 <span className={cn('size-1.5', STATUS_BG[status])} aria-hidden="true" />
-                {status}
+                {t(status)}
                 <span className="tabular-nums text-muted-foreground">{n}</span>
               </FilterChip>
             ))}
@@ -86,7 +87,7 @@ export function CellarSummary({ bottles, activeStatus, onStatusChange }: Summary
             ))}
             {value.average !== null && (
               <li>
-                Average bottle <span className="tabular-nums text-foreground">{wholeEuros.format(value.average)}</span>
+                {t('Average bottle')} <span className="tabular-nums text-foreground">{wholeEuros.format(value.average)}</span>
               </li>
             )}
           </ul>
@@ -138,9 +139,9 @@ export function DontMiss({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
     <section aria-labelledby="dont-miss" className="flex flex-col gap-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="dont-miss" className="font-serif text-3xl font-light">
-          Don&apos;t miss these
+          {t("Don't miss these")}
         </h2>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Closing windows first</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">{t('Closing windows first')}</p>
       </div>
       <ul className="grid gap-px border bg-border sm:grid-cols-3">
         {urgent.map((b) => {
@@ -182,7 +183,7 @@ const TYPE_DOT = (b: Bottle) =>
         ? 'bg-cork/30'
         : 'bg-foreground'
 
-const EMPTY = <p className="py-16 text-center text-sm text-muted-foreground">No bottles here yet.</p>
+const EMPTY = <p className="py-16 text-center text-sm text-muted-foreground">{t('No bottles here yet.')}</p>
 
 export function WineList({ bottles, onSelect }: { bottles: Bottle[]; onSelect: Select }) {
   if (bottles.length === 0) return EMPTY
@@ -206,7 +207,7 @@ export function WineList({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate font-serif text-lg font-normal">{title(b)}</span>
                   <span className="truncate text-xs uppercase tracking-wider text-muted-foreground">
-                    {[b.producer, b.region, b.type].filter(Boolean).join(' · ')}
+                    {[b.producer, t(b.region), t(b.type)].filter(Boolean).join(' · ')}
                   </span>
                 </div>
               </div>
@@ -214,7 +215,7 @@ export function WineList({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
               <span className="flex items-center justify-end gap-2 text-sm tabular-nums md:order-last">
                 <Sticker price={b.priceToday} />
                 {b.quantity}
-                <span className="sr-only"> bottles</span>
+                <span className="sr-only"> {t('bottles')}</span>
                 <span className="text-muted-foreground" aria-hidden="true">
                   ×
                 </span>
@@ -265,7 +266,7 @@ export function TimelineView({ bottles, onSelect }: { bottles: Bottle[]; onSelec
     <div className="overflow-x-auto border-y">
       <div className="min-w-[720px] px-5 py-4">
         <div className="grid grid-cols-[14rem_1fr] gap-6 pb-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Wine</span>
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">{t('Wine')}</span>
           <div className="relative h-4 text-[11px] tabular-nums text-muted-foreground">
             {TICKS.map((year) => (
               <span

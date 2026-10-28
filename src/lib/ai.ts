@@ -1,6 +1,7 @@
 import { GoogleAIBackend, getAI, getGenerativeModel } from 'firebase/ai'
 import type { ModelParams, Schema } from 'firebase/ai'
 import { app, firebaseEnabled } from './firebase'
+import { t } from './i18n'
 
 // Gemini, called through the Firebase project (AI Logic must be turned on there).
 // App Check, when a site key is set, adds proof that a request comes from this app.
@@ -35,7 +36,7 @@ async function ask(settings: Settings, prompt: string, photos: string[] = []): P
       const result = await Promise.race([
         model.generateContent(parts),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('No answer after 60 seconds.')), TIMEOUT_MS),
+          setTimeout(() => reject(new Error(t('No answer after 60 seconds.'))), TIMEOUT_MS),
         ),
       ])
       return result.response.text()
@@ -47,8 +48,8 @@ async function ask(settings: Settings, prompt: string, photos: string[] = []): P
   }
   throw new Error(
     busy
-      ? 'The AI models are busy right now. Try again in a minute.'
-      : "Today's free AI allowance is used up. It resets within a day.",
+      ? t('The AI models are busy right now. Try again in a minute.')
+      : t("Today's free AI allowance is used up. It resets within a day."),
   )
 }
 
@@ -71,7 +72,7 @@ export async function readWineListAt(url: string): Promise<string> {
     `Open ${url}. It is a restaurant menu. Copy out every wine on it, one per line, with producer, wine name, vintage, colour, and the price of a bottle and of a glass when shown. Copy exactly what is written; never add a wine that is not there. If the page cannot be opened or has no wine list, answer only: NO WINE LIST.`,
   )
   if (/NO WINE LIST/.test(text) || text.trim().length < 20) {
-    throw new Error('No wine list could be read at that link. Try pasting the list instead.')
+    throw new Error(t('No wine list could be read at that link. Try pasting the list instead.'))
   }
   return text.trim()
 }

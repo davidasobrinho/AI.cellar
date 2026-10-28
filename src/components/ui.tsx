@@ -4,6 +4,7 @@ import { clsx } from 'clsx'
 import type { ClassValue } from 'clsx'
 import { X } from 'lucide-react'
 import { twMerge } from 'tailwind-merge'
+import { t } from '../lib/i18n'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -63,7 +64,7 @@ export function Sheet({ open, onClose, children }: { open: boolean; onClose: () 
           className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="size-4" aria-hidden="true" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{t('Close')}</span>
         </button>
         {children}
       </div>
@@ -119,7 +120,7 @@ export function SelectField<T extends string>({
       <span className={LABEL}>{label}</span>
       <select className={INPUT} value={value} onChange={(e) => onChange(e.target.value as T)}>
         {options.map((o) => {
-          const option = typeof o === 'string' ? { value: o, label: o } : o
+          const option = typeof o === 'string' ? { value: o, label: t(o) } : o
           return (
             <option key={option.value} value={option.value}>
               {option.label}

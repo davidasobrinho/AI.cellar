@@ -3,6 +3,7 @@ import { REGIONS, TIERS, WINE_TYPES } from '../types'
 import type { Bottle } from '../types'
 import { aiEnabled, generateJson } from './ai'
 import { styleStructure } from './structure'
+import { lang } from './i18n'
 
 // Reads one or two label photos with Gemini.
 export const scanEnabled = aiEnabled
@@ -35,7 +36,7 @@ const schema = Schema.object({
     peakFrom: year('Estimated start of peak drinking. 0 if it cannot be estimated'),
     peakTo: year('Estimated end of peak drinking. 0 if it cannot be estimated'),
     drinkUntil: year('Estimated last good year. 0 if it cannot be estimated'),
-    note: text('One short sentence on style and what to expect'),
+    note: text(`One short sentence on style and what to expect, in ${lang === 'pt' ? 'European Portuguese' : 'English'}`),
     body: scale('Body, from 1 light to 5 full'),
     tannin: scale('Tannin, from 1 soft or none to 5 firm'),
     acidity: scale('Acidity, from 1 round to 5 very fresh'),
@@ -52,7 +53,7 @@ const schema = Schema.object({
     bottledBy: text('Bottler name and town. Empty if not visible'),
     serveAt: text('Serving temperature, for example 16–18 °C'),
     decant: text('Decanting advice. Empty if not needed'),
-    backLabel: text('Tasting text from the back label, translated to English. Empty if there is none'),
+    backLabel: text(`Tasting text from the back label, in ${lang === 'pt' ? 'European Portuguese' : 'English'}. Empty if there is none`),
   },
 })
 

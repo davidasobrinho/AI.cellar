@@ -16,6 +16,7 @@ import type { Role, Store } from './lib/store'
 import { STATUS_ORDER, drinkingWindow } from './lib/windows'
 import type { WindowStatus } from './lib/windows'
 import type { Bottle, Cellar } from './types'
+import { lang, setLang, t } from './lib/i18n'
 
 const DEFAULT_TITLE = 'CAVE SOBRI'
 
@@ -56,13 +57,13 @@ function SharedApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   useEffect(() => onAuthStateChanged(auth!, setUser), [])
 
-  if (user === undefined) return <Centered>Loading…</Centered>
+  if (user === undefined) return <Centered>{t('Loading…')}</Centered>
   if (user === null || !user.email) {
     return (
       <Centered>
-        <p className="text-sm text-muted-foreground">Sign in to see your cellars and the ones shared with you.</p>
+        <p className="text-sm text-muted-foreground">{t('Sign in to see your cellars and the ones shared with you.')}</p>
         <Button className="h-11 px-6" onClick={() => void signInWithPopup(auth!, new GoogleAuthProvider())}>
-          Sign in with Google
+          {t('Sign in with Google')}
         </Button>
       </Centered>
     )
@@ -76,7 +77,7 @@ function SignedInApp({ email }: { email: string }) {
     return (
       <Centered>
         <p className={cn('text-sm', store.error ? 'text-destructive' : 'text-muted-foreground')}>
-          {store.error ? `Problem ${store.error}` : 'Loading your cellar…'}
+          {store.error ? `${t('Problem')} ${store.error}` : t('Loading your cellar…')}
         </p>
         <Account email={email} />
       </Centered>
@@ -90,7 +91,7 @@ function Account({ email }: { email: string }) {
     <p className="text-xs text-muted-foreground">
       {email} ·{' '}
       <button type="button" className="underline underline-offset-4" onClick={() => void signOut(auth!)}>
-        Sign out
+        {t('Sign out')}
       </button>
     </p>
   )
@@ -98,15 +99,15 @@ function Account({ email }: { email: string }) {
 
 type View = 'cellar' | 'journal' | 'sommelier'
 const VIEWS: { id: View; label: string }[] = [
-  { id: 'cellar', label: 'Cellar' },
-  { id: 'journal', label: 'Journal' },
-  { id: 'sommelier', label: 'Sommelier' },
+  { id: 'cellar', label: t('Cellar') },
+  { id: 'journal', label: t('Journal') },
+  { id: 'sommelier', label: t('Sommelier') },
 ]
 
 type Layout = 'list' | 'timeline'
 const LAYOUTS: { id: Layout; label: string }[] = [
-  { id: 'list', label: 'List' },
-  { id: 'timeline', label: 'Timeline' },
+  { id: 'list', label: t('List') },
+  { id: 'timeline', label: t('Timeline') },
 ]
 
 type Panel =
@@ -120,13 +121,13 @@ type Panel =
 // The one way to add a wine: it either goes in a cellar or in the journal.
 function AddChooser({ onCellar, onJournal }: { onCellar: () => void; onJournal: () => void }) {
   const options = [
-    { label: 'I have this bottle', hint: 'Add it to a cellar, to track it and know when to drink it.', go: onCellar },
-    { label: 'I drank it, or want to', hint: 'Rate it, or save it for later. It goes in your journal and shapes your palate.', go: onJournal },
+    { label: t('I have this bottle'), hint: t('Add it to a cellar, to track it and know when to drink it.'), go: onCellar },
+    { label: t('I drank it, or want to'), hint: t('Rate it, or save it for later. It goes in your journal and shapes your palate.'), go: onJournal },
   ]
   return (
     <div className="flex flex-col">
-      <SheetHeader eyebrow="Adicionar" title="Add a wine">
-        Both start the same way: snap the label, or type it in.
+      <SheetHeader eyebrow="Adicionar" title={t('Add a wine')}>
+        {t('Both start the same way: snap the label, or type it in.')}
       </SheetHeader>
       <div className="flex flex-col gap-3 p-6">
         {options.map((o) => (
@@ -164,8 +165,8 @@ function ShareForm({ cellar, account, store }: { cellar: Cellar; account?: strin
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('view')
   const people = [
-    ...(cellar.members ?? []).map((m) => ({ email: m, role: 'Can edit' })),
-    ...(cellar.viewers ?? []).map((v) => ({ email: v, role: 'Can view' })),
+    ...(cellar.members ?? []).map((m) => ({ email: m, role: t('Can edit') })),
+    ...(cellar.viewers ?? []).map((v) => ({ email: v, role: t('Can view') })),
   ].filter((p) => p.email !== account)
 
   const submit = (e: FormEvent) => {
@@ -176,16 +177,16 @@ function ShareForm({ cellar, account, store }: { cellar: Cellar; account?: strin
 
   return (
     <form onSubmit={submit} className="flex flex-col">
-      <SheetHeader eyebrow="Partilhar" title={`Share ${cellar.name}`}>
-        They sign in with that Google account and the cellar appears in their app, next to their own.
+      <SheetHeader eyebrow="Partilhar" title={t('Share {name}', { name: cellar.name })}>
+        {t('They sign in with that Google account and the cellar appears in their app, next to their own.')}
       </SheetHeader>
       <section className="flex flex-col gap-4 border-b p-6">
-        <Field label="Their Google email" type="email" value={email} onChange={setEmail} required />
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="What they can do">
+        <Field label={t('Their Google email')} type="email" value={email} onChange={setEmail} required />
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label={t('Can edit')}>
           {(
             [
-              ['view', 'Can view', 'Look only'],
-              ['edit', 'Can edit', 'Add, open, change'],
+              ['view', t('Can view'), t('Look only')],
+              ['edit', t('Can edit'), t('Add, open, change')],
             ] as [Role, string, string][]
           ).map(([id, label, hint]) => (
             <button
@@ -204,12 +205,12 @@ function ShareForm({ cellar, account, store }: { cellar: Cellar; account?: strin
           ))}
         </div>
         <Button type="submit" className="h-11">
-          Share
+          {t('Share')}
         </Button>
       </section>
       {people.length > 0 && (
         <section className="flex flex-col gap-3 p-6">
-          <SectionTitle>Shared with</SectionTitle>
+          <SectionTitle>{t('Shared with')}</SectionTitle>
           <ul className="flex flex-col divide-y border-y text-sm">
             {people.map((p) => (
               <li key={p.email} className="flex items-center justify-between gap-3 py-2">
@@ -221,7 +222,7 @@ function ShareForm({ cellar, account, store }: { cellar: Cellar; account?: strin
                   onClick={() => store.unshareCellar!(cellar.id, p.email)}
                   className="shrink-0 text-xs text-muted-foreground underline underline-offset-4"
                 >
-                  Remove
+                  {t('Remove')}
                 </button>
               </li>
             ))}
@@ -275,19 +276,19 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
   const select = (b: Bottle) => setPanel({ kind: 'detail', id: b.id })
 
   const addCellar = () => {
-    const name = window.prompt('Name of the new cellar')?.trim()
+    const name = window.prompt(t('Name of the new cellar'))?.trim()
     if (name) store.addCellar(name)
   }
   const removeCellar = () => {
     const count = data.bottles.filter((b) => b.cellarId === selected!.id).length
     const others = (selected!.members?.length ?? 1) + (selected!.viewers?.length ?? 0) > 1
-    const note = others ? ' It will disappear for everyone it is shared with.' : ''
-    if (window.confirm(`Delete the cellar "${selected!.name}" and its ${count} wines? This cannot be undone.${note}`)) {
+    const note = others ? t(' It will disappear for everyone it is shared with.') : ''
+    if (window.confirm(t('Delete the cellar "{name}" and its {count} wines? This cannot be undone.{note}', { name: selected!.name, count, note }))) {
       store.deleteCellar(selected!.id)
     }
   }
   const rename = () => {
-    const next = window.prompt('Name at the top of your app, for example CAVE MARIA', title)?.trim()
+    const next = window.prompt(t('Name at the top of your app, for example CAVE MARIA'), title)?.trim()
     if (next !== undefined) store.saveProfile({ ...profile, title: next.toUpperCase() })
   }
 
@@ -300,8 +301,8 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <div className="flex justify-end">
             <Button onClick={() => setPanel({ kind: 'add' })}>
               <Plus aria-hidden="true" />
-              <span className="hidden sm:inline">Add a wine</span>
-              <span className="sr-only sm:hidden">Add a wine</span>
+              <span className="hidden sm:inline">{t('Add a wine')}</span>
+              <span className="sr-only sm:hidden">{t('Add a wine')}</span>
             </Button>
           </div>
         </div>
@@ -330,7 +331,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       <main className="mx-auto flex max-w-6xl flex-col gap-14 px-5 py-10">
         {store.error && (
           <p role="alert" className="text-center text-sm text-destructive">
-            Problem {store.error}
+            {t('Problem')} {store.error}
           </p>
         )}
 
@@ -363,37 +364,37 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <div className="flex flex-col items-center gap-3">
             <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Cellars to show">
               <Chip active={shown.length === 0} onClick={() => setChosen([])}>
-                All cellars
+                {t('All cellars')}
               </Chip>
               {data.cellars.map((c) => (
                 <Chip key={c.id} active={shown.includes(c.id)} onClick={() => toggle(c.id)}>
-                  {c.name}
-                  {!store.canEdit(c.id) && <span className="text-[10px] uppercase tracking-wider opacity-60">view</span>}
+                  {t(c.name)}
+                  {!store.canEdit(c.id) && <span className="text-[10px] uppercase tracking-wider opacity-60">{t('view')}</span>}
                 </Chip>
               ))}
             </div>
             <div className="flex flex-wrap items-center justify-center gap-1 text-sm">
               <Button variant="ghost" className="h-8" onClick={addCellar}>
-                New cellar
+                {t('New cellar')}
               </Button>
               {!data.cellars.some((c) => c.name === SHOWCASE_CELLAR) && (
                 <Button variant="ghost" className="h-8" onClick={() => store.addCellar(SHOWCASE_CELLAR, showcaseBottles())}>
-                  Add showcase wines
+                  {t('Add showcase wines')}
                 </Button>
               )}
               {store.shareCellar && selectedEditable && (
                 <Button variant="ghost" className="h-8" onClick={() => setPanel({ kind: 'share', cellarId: selected.id })}>
-                  Share
+                  {t('Share')}
                 </Button>
               )}
               {selectedEditable && editableCellars.length > 1 && (
                 <Button variant="danger" className="h-8" onClick={removeCellar}>
-                  Delete cellar
+                  {t('Delete cellar')}
                 </Button>
               )}
             </div>
             {selected && !selectedEditable && (
-              <p className="text-xs text-muted-foreground">Shared with you to look at. You cannot change it.</p>
+              <p className="text-xs text-muted-foreground">{t('Shared with you to look at. You cannot change it.')}</p>
             )}
           </div>
         )}
@@ -405,11 +406,11 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
         <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', !cellarView && 'hidden')}>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 id="bottles" className="font-serif text-3xl font-light">
-              {status ?? (layout === 'list' ? 'All wines' : 'Drinking timeline')}
+              {status ? t(status) : t(layout === 'list' ? 'All wines' : 'Drinking timeline')}
             </h2>
             <div className="flex items-center gap-4">
               <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                {visible.length} {visible.length === 1 ? 'wine' : 'wines'}
+                {visible.length} {t(visible.length === 1 ? 'wine' : 'wines')}
               </span>
               <div className="flex gap-1" role="group" aria-label="Layout">
                 {LAYOUTS.map((l) => (
@@ -430,15 +431,15 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-2">
               <span className="h-2 w-5 bg-cork/45" aria-hidden="true" />
-              Drinking window
+              {t('Drinking window')}
             </span>
             <span className="flex items-center gap-2">
               <span className="h-2 w-5 bg-status-peak" aria-hidden="true" />
-              Peak
+              {t('Peak')}
             </span>
             <span className="flex items-center gap-2">
               <span className="h-3 w-0.5 bg-foreground" aria-hidden="true" />
-              Today
+              {t('Today')}
             </span>
           </div>
         </section>
@@ -447,10 +448,22 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-5 py-10 text-center">
           <span className="font-normal">SOBRI</span>
-          <span className="text-xs text-muted-foreground">Sealed with Portuguese cork · Porto</span>
+          <span className="text-xs text-muted-foreground">{t('Sealed with Portuguese cork · Porto')}</span>
           <button type="button" onClick={rename} className="text-xs text-muted-foreground underline underline-offset-4">
-            Change the name at the top
+            {t('Change the name at the top')}
           </button>
+          <span className="flex gap-3 text-xs text-muted-foreground">
+            {(['pt', 'en'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => l !== lang && setLang(l)}
+                className={cn('underline-offset-4', l === lang ? 'text-foreground' : 'underline')}
+              >
+                {l === 'pt' ? 'Português' : 'English'}
+              </button>
+            ))}
+          </span>
           {account && <Account email={account} />}
         </div>
       </footer>
@@ -460,7 +473,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           <WineDetail
             key={detail.id}
             bottle={detail}
-            cellarName={data.cellars.find((c) => c.id === detail.cellarId)?.name ?? ''}
+            cellarName={t(data.cellars.find((c) => c.id === detail.cellarId)?.name ?? '')}
             readOnly={!store.canEdit(detail.cellarId)}
             onChange={store.putBottle}
             onEdit={() => setPanel({ kind: 'form', bottle: detail })}

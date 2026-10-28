@@ -1,11 +1,12 @@
 import type { Bottle } from '../types'
+import { locale, t } from './i18n'
 
 export type PriceBand = 'green' | 'blue' | 'red'
 
 export const BAND_LABELS: Record<PriceBand, string> = {
-  green: 'Below €10',
-  blue: '€10 to €30',
-  red: 'More than €30',
+  green: t('Below €10'),
+  blue: t('€10 to €30'),
+  red: t('More than €30'),
 }
 
 export function priceBand(price: number | null): PriceBand | null {
@@ -38,5 +39,5 @@ export function cellarValue(bottles: Bottle[]): CellarValue {
 }
 
 export function euros(value: number): string {
-  return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(value)
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(value)
 }

@@ -1,4 +1,5 @@
 import type { Bottle, DrinkWindow, Region, Tier, WineType } from '../types'
+import { t, years } from './i18n'
 
 // When to drink a bottle. A window set for the wine itself (read from the label
 // or typed in) wins. Otherwise it is a rule-of-thumb estimate by style, region
@@ -94,19 +95,18 @@ function statusOf(w: DrinkWindow, year: number): WindowStatus {
 }
 
 function hintFor(status: WindowStatus, w: DrinkWindow | null, year: number): string {
-  if (!w) return status === 'Ready any time' ? 'Open whenever you like' : 'No estimate yet'
-  const years = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`
+  if (!w) return t(status === 'Ready any time' ? 'Open whenever you like' : 'No estimate yet')
   switch (status) {
     case 'Wait':
-      return `Ready in ${years(w.drinkFrom - year)} (${w.drinkFrom})`
+      return t('Ready in {n} ({year})', { n: years(w.drinkFrom - year), year: w.drinkFrom })
     case 'Ready':
-      return `Peaks in ${years(w.peakFrom - year)} (${w.peakFrom})`
+      return t('Peaks in {n} ({year})', { n: years(w.peakFrom - year), year: w.peakFrom })
     case 'At peak':
-      return w.peakTo === year ? 'Last year at peak' : `At peak until ${w.peakTo}`
+      return w.peakTo === year ? t('Last year at peak') : t('At peak until {year}', { year: w.peakTo })
     case 'Drink soon':
-      return `Best before end of ${w.drinkUntil}`
+      return t('Best before end of {year}', { year: w.drinkUntil })
     default:
-      return `Window closed in ${w.drinkUntil}`
+      return t('Window closed in {year}', { year: w.drinkUntil })
   }
 }
 

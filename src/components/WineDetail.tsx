@@ -9,6 +9,7 @@ import { Stars, TagPicker } from './Journal'
 import { StructureBars } from './PalateGraph'
 import { StatusBadge, Sticker, WindowBar } from './status'
 import { Button, Field, SectionTitle, SheetHeader, cn } from './ui'
+import { locale, t } from '../lib/i18n'
 
 interface Props {
   bottle: Bottle
@@ -46,21 +47,21 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
   return (
     <>
       <SheetHeader
-        eyebrow={[bottle.producer, bottle.region].filter(Boolean).join(' · ')}
+        eyebrow={[bottle.producer, t(bottle.region)].filter(Boolean).join(' · ')}
         title={[bottle.name, bottle.vintage].filter(Boolean).join(' ')}
       >
-        {[bottle.type, bottle.grapes].filter(Boolean).join(' · ')}
+        {[t(bottle.type), bottle.grapes].filter(Boolean).join(' · ')}
       </SheetHeader>
 
       <section className="flex flex-col gap-5 border-b p-6">
         <div className="flex items-center justify-between">
-          <SectionTitle>Drinking window</SectionTitle>
+          <SectionTitle>{t('Drinking window')}</SectionTitle>
           <StatusBadge status={w.status} />
         </div>
 
         <div className="border-l-2 border-primary bg-muted/70 p-4">
           <p className="font-serif text-xl font-normal leading-snug">{w.hint}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{STATUS_DESCRIPTION[w.status]}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t(STATUS_DESCRIPTION[w.status])}</p>
         </div>
 
         {w.dates && (
@@ -69,7 +70,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
               <WindowBar dates={w.dates} start={start} end={end} className="h-3" />
               <div className="flex justify-between text-[11px] tabular-nums text-muted-foreground">
                 <span>{start}</span>
-                <span className="font-normal text-foreground">Today · {YEAR}</span>
+                <span className="font-normal text-foreground">{t('Today · {year}', { year: YEAR })}</span>
                 <span>{end}</span>
               </div>
             </div>
@@ -81,7 +82,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
                 ['Drink by', `${w.dates.drinkUntil}`],
               ].map(([label, value]) => (
                 <div key={label} className="flex flex-col items-center gap-1 py-3">
-                  <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+                  <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{t(label)}</dt>
                   <dd className="text-sm font-normal tabular-nums">{value}</dd>
                 </div>
               ))}
@@ -90,54 +91,54 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
         )}
         <p className="text-xs text-muted-foreground">
           {w.source === 'This wine'
-            ? 'An estimate for this wine and vintage. It assumes good storage.'
-            : 'An estimate from the style of the wine, not this producer or year. It assumes good storage.'}
+            ? t('An estimate for this wine and vintage. It assumes good storage.')
+            : t('An estimate from the style of the wine, not this producer or year. It assumes good storage.')}
         </p>
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Structure</SectionTitle>
+        <SectionTitle>{t('Structure')}</SectionTitle>
         <StructureBars structure={bottle.structure ?? styleStructure(bottle)} />
         <p className="text-xs text-muted-foreground">
-          {bottle.structure ? 'Estimated for this wine.' : 'Estimated from its type, region and level, not this producer.'}
+          {t(bottle.structure ? 'Estimated for this wine.' : 'Estimated from its type, region and level, not this producer.')}
         </p>
       </section>
 
       {bottle.label && <LabelSection bottle={bottle} label={bottle.label} />}
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>In your cellar</SectionTitle>
+        <SectionTitle>{t('In your cellar')}</SectionTitle>
         <div className="flex flex-col">
           <span className="font-serif text-4xl font-light tabular-nums">
             {bottle.quantity}{' '}
-            <span className="text-base font-normal text-muted-foreground">{bottle.quantity === 1 ? 'bottle' : 'bottles'}</span>
+            <span className="text-base font-normal text-muted-foreground">{t(bottle.quantity === 1 ? 'bottle' : 'bottles')}</span>
           </span>
           <span className="text-sm text-muted-foreground">{[cellarName, bottle.location].filter(Boolean).join(' · ')}</span>
         </div>
         <dl className="grid grid-cols-3 gap-3 text-sm">
-          <Price term="Price today" value={bottle.priceToday} />
-          <Price term="Price paid" value={bottle.pricePaid} />
-          <Price term="Total value" value={bottle.priceToday === null ? null : bottle.priceToday * bottle.quantity} />
+          <Price term={t('Price today')} value={bottle.priceToday} />
+          <Price term={t('Price paid')} value={bottle.pricePaid} />
+          <Price term={t('Total value')} value={bottle.priceToday === null ? null : bottle.priceToday * bottle.quantity} />
         </dl>
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Sticker price={bottle.priceToday} />
-          {band ? `${BAND_LABELS[band]} sticker` : 'No price yet, so no sticker'}
+          {band ? t('{band} sticker', { band: BAND_LABELS[band] }) : t('No price yet, so no sticker')}
         </p>
         {bottle.notes && <p className="border border-dashed p-3 text-sm text-muted-foreground">{bottle.notes}</p>}
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>{readOnly ? 'Opened' : 'Open a bottle'}</SectionTitle>
+        <SectionTitle>{t(readOnly ? 'Opened' : 'Open a bottle')}</SectionTitle>
         {readOnly ? (
-          <p className="text-sm text-muted-foreground">This cellar is shared with you to look at. Only its owners can open or change bottles.</p>
+          <p className="text-sm text-muted-foreground">{t('This cellar is shared with you to look at. Only its owners can open or change bottles.')}</p>
         ) : (
           <>
             <Stars value={stars} onChange={(n) => setStars(stars === n ? null : n)} />
             <TagPicker value={tags} onChange={setTags} />
-            <Field label="Occasion, food, what you thought" value={note} onChange={setNote} />
+            <Field label={t('Occasion, food, what you thought')} value={note} onChange={setNote} />
             <Button className="h-11" onClick={open} disabled={bottle.quantity === 0}>
               <WineIcon aria-hidden="true" />
-              Open a bottle
+              {t('Open a bottle')}
             </Button>
           </>
         )}
@@ -147,14 +148,14 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
             {bottle.openings.map((o, i) => (
               <li key={o.date} className="flex items-baseline justify-between gap-3 py-2">
                 <span>
-                  <span className="tabular-nums text-muted-foreground">{new Date(o.date).toLocaleDateString('en-GB')}</span>
+                  <span className="tabular-nums text-muted-foreground">{new Date(o.date).toLocaleDateString(locale)}</span>
                   {starsOf(o) !== null && ` · ${starsOf(o)}★`}
-                  {o.tags && o.tags.length > 0 && ` · ${o.tags.join(', ')}`}
+                  {o.tags && o.tags.length > 0 && ` · ${o.tags.map((tag) => t(tag)).join(', ')}`}
                   {o.note && ` · ${o.note}`}
                 </span>
                 {i === 0 && !readOnly && (
                   <button type="button" onClick={undo} className="shrink-0 text-xs text-primary underline underline-offset-4">
-                    Undo
+                    {t('Undo')}
                   </button>
                 )}
               </li>
@@ -166,14 +167,14 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
       <div className={cn('mt-auto flex justify-between gap-2 p-6', readOnly && 'hidden')}>
         <Button
           variant="danger"
-          onClick={() => window.confirm(`Remove ${bottle.name} from the cellar?`) && onDelete()}
+          onClick={() => window.confirm(t('Remove {name} from the cellar?', { name: bottle.name })) && onDelete()}
         >
           <Trash2 aria-hidden="true" />
-          Remove
+          {t('Remove')}
         </Button>
         <Button variant="outline" onClick={onEdit}>
           <Pencil aria-hidden="true" />
-          Edit
+          {t('Edit')}
         </Button>
       </div>
     </>
@@ -208,8 +209,7 @@ function LabelSection({ bottle, label }: { bottle: Bottle; label: LabelDetails }
   return (
     <section className="flex flex-col gap-5 border-b p-6">
       <div className="flex items-baseline justify-between">
-        <SectionTitle>Label</SectionTitle>
-        <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Rótulo</span>
+        <SectionTitle>{t('Label')}</SectionTitle>
       </div>
 
       <div className="flex flex-col items-center gap-1 border border-foreground/80 px-4 py-6 text-center outline outline-1 outline-offset-4 outline-border">
@@ -224,21 +224,21 @@ function LabelSection({ bottle, label }: { bottle: Bottle; label: LabelDetails }
       <div className="grid grid-cols-2 border-y">
         {[
           ['Serve at', label.serveAt || '–'],
-          ['Decant', label.decant || 'Not needed'],
+          ['Decant', label.decant || t('Not needed')],
         ].map(([term, value]) => (
           <div key={term} className="flex flex-col gap-1 py-3 first:border-r first:pr-3 last:pl-3">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{term}</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t(term)}</span>
             <span className="text-sm font-normal">{value}</span>
           </div>
         ))}
       </div>
 
-      <SpecList title="Front label" items={front} />
-      <SpecList title="Back label" items={back} />
+      <SpecList title={t('Front label')} items={front} />
+      <SpecList title={t('Back label')} items={back} />
 
       {label.backLabel && (
         <figure className="flex flex-col gap-2">
-          <figcaption className="text-[11px] uppercase tracking-widest text-muted-foreground">From the back label</figcaption>
+          <figcaption className="text-[11px] uppercase tracking-widest text-muted-foreground">{t('From the back label')}</figcaption>
           <blockquote className="text-sm leading-relaxed text-pretty">&ldquo;{label.backLabel}&rdquo;</blockquote>
         </figure>
       )}
@@ -255,7 +255,7 @@ function SpecList({ title, items }: { title: string; items: string[][] }) {
       <dl className="flex flex-col">
         {shown.map(([term, value]) => (
           <div key={term} className="flex items-baseline gap-2 py-1 text-sm">
-            <dt className="shrink-0 text-muted-foreground">{term}</dt>
+            <dt className="shrink-0 text-muted-foreground">{t(term)}</dt>
             <span className="min-w-4 flex-1 translate-y-[-3px] border-b border-dotted border-foreground/30" aria-hidden="true" />
             <dd className="text-right">{value}</dd>
           </div>

@@ -10,16 +10,17 @@ import { REGIONS, TASTE_TAGS, WINE_TYPES } from '../types'
 import type { Bottle, Journal as JournalData, Profile, Tasting } from '../types'
 import { PalateSummary } from './Palate'
 import { Button, Field, SectionTitle, SelectField, Sheet, SheetHeader, cn } from './ui'
+import { locale, t } from '../lib/i18n'
 
 export function Stars({ value, onChange, size = 'md' }: { value: number | null; onChange?: (stars: number) => void; size?: 'sm' | 'md' }) {
   const icon = size === 'sm' ? 'size-3.5' : 'size-7'
   return (
-    <span className="inline-flex gap-0.5" aria-label={value ? `${value} out of 5 stars` : 'Not rated'}>
+    <span className="inline-flex gap-0.5" aria-label={value ? t('{n} out of 5 stars', { n: value }) : t('Not rated')}>
       {[1, 2, 3, 4, 5].map((n) => {
         const on = value !== null && n <= value
         const star = <Star className={cn(icon, on ? 'fill-primary text-primary' : 'text-input')} aria-hidden="true" />
         return onChange ? (
-          <button key={n} type="button" onClick={() => onChange(n)} className="p-0.5" aria-label={`${n} stars`}>
+          <button key={n} type="button" onClick={() => onChange(n)} className="p-0.5" aria-label={t('{n} stars', { n })}>
             {star}
           </button>
         ) : (
@@ -40,13 +41,13 @@ export function TagPicker({ value, onChange }: { value: string[]; onChange: (tag
             key={tag}
             type="button"
             aria-pressed={on}
-            onClick={() => onChange(on ? value.filter((t) => t !== tag) : [...value, tag])}
+            onClick={() => onChange(on ? value.filter((v) => v !== tag) : [...value, tag])}
             className={cn(
               'h-8 rounded-md border px-2.5 text-xs transition-colors',
               on ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground/40',
             )}
           >
-            {tag}
+            {t(tag)}
           </button>
         )
       })}
@@ -99,7 +100,7 @@ export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: 
         structure: read.structure ?? null,
       }))
     } catch (err) {
-      setError(`The label could not be read. ${err instanceof Error ? err.message : ''}`)
+      setError(t('The label could not be read. {why}', { why: err instanceof Error ? err.message : '' }))
     } finally {
       setScanning(false)
     }
@@ -113,8 +114,8 @@ export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: 
 
   return (
     <form onSubmit={submit} className="flex flex-col">
-      <SheetHeader eyebrow="Diário" title={entry ? 'Edit wine' : 'A wine to remember'}>
-        From anywhere: a restaurant, a shop shelf, a friend's table. Rate it now, or save it for later and rate it when you drink it.
+      <SheetHeader eyebrow="Diário" title={t(entry ? 'Edit wine' : 'A wine to remember')}>
+        {t("From anywhere: a restaurant, a shop shelf, a friend's table. Rate it now, or save it for later and rate it when you drink it.")}
       </SheetHeader>
 
       <section className="flex flex-col gap-4 border-b p-6">
@@ -124,29 +125,29 @@ export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: 
             className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
           >
             {scanning ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Camera className="size-4" aria-hidden="true" />}
-            {scanning ? 'Reading the label…' : 'Fill in from a label photo'}
+            {t(scanning ? 'Reading the label…' : 'Fill in from a label photo')}
             <input id={photoId} type="file" accept="image/*" capture="environment" onChange={scan} className="sr-only" />
           </label>
         )}
-        <Field label="Wine" placeholder="Producer and wine" value={draft.wine} onChange={(v) => set('wine', v)} required />
+        <Field label={t('Wine')} placeholder={t('Producer and wine')} value={draft.wine} onChange={(v) => set('wine', v)} required />
         <div className="grid grid-cols-3 gap-3">
-          <Field label="Vintage" inputMode="numeric" value={draft.vintage ?? ''} onChange={(v) => set('vintage', numberOrNull(v))} />
-          <SelectField label="Type" value={draft.type} options={WINE_TYPES} onChange={(v) => set('type', v)} />
-          <SelectField label="Region" value={draft.region} options={REGIONS} onChange={(v) => set('region', v)} />
+          <Field label={t('Vintage')} inputMode="numeric" value={draft.vintage ?? ''} onChange={(v) => set('vintage', numberOrNull(v))} />
+          <SelectField label={t('Type')} value={draft.type} options={WINE_TYPES} onChange={(v) => set('type', v)} />
+          <SelectField label={t('Region')} value={draft.region} options={REGIONS} onChange={(v) => set('region', v)} />
         </div>
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Your rating, if you have tasted it</SectionTitle>
+        <SectionTitle>{t('Your rating, if you have tasted it')}</SectionTitle>
         <Stars value={draft.stars ?? null} onChange={(n) => set('stars', n)} />
         <TagPicker value={draft.tags} onChange={(tags) => set('tags', tags)} />
-        <Field label="What you thought" value={draft.note} onChange={(v) => set('note', v)} />
+        <Field label={t('What you thought')} value={draft.note} onChange={(v) => set('note', v)} />
       </section>
 
       <section className="flex flex-col gap-4 p-6">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Where" placeholder="Restaurant, shop, friend's" value={draft.place ?? ''} onChange={(v) => set('place', v)} />
-          <Field label="Price (€)" inputMode="decimal" value={draft.price ?? ''} onChange={(v) => set('price', numberOrNull(v))} />
+          <Field label={t('Where')} placeholder={t("Restaurant, shop, friend's")} value={draft.place ?? ''} onChange={(v) => set('place', v)} />
+          <Field label={t('Price (€)')} inputMode="decimal" value={draft.price ?? ''} onChange={(v) => set('price', numberOrNull(v))} />
         </div>
         <label className="flex items-center gap-3 text-sm">
           <input
@@ -155,7 +156,7 @@ export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: 
             onChange={(e) => set('wantToBuy', e.target.checked)}
             className="size-4 accent-primary"
           />
-          I want to buy this one
+          {t('I want to buy this one')}
         </label>
         {error && (
           <p role="alert" className="text-sm text-destructive">
@@ -163,7 +164,7 @@ export function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: 
           </p>
         )}
         <Button type="submit" className="mt-2 h-11 tracking-wide">
-          {entry ? 'Save changes' : draft.stars ? 'Add to my journal' : 'Save for later'}
+          {t(entry ? 'Save changes' : draft.stars ? 'Add to my journal' : 'Save for later')}
         </Button>
       </section>
     </form>
@@ -203,42 +204,42 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
 
   const rows: Row[] = [
     ...rated.map((r) => {
-      const entry = journal.entries.find((t) => t.id === r.key) ?? null
+      const entry = journal.entries.find((e) => e.id === r.key) ?? null
       return {
         key: r.key,
         date: r.date,
         wine: r.wine,
         stars: r.stars,
-        details: [r.type, r.region, entry?.place, new Date(r.date).toLocaleDateString('en-GB')].filter(Boolean).join(' · '),
-        why: [...r.tags, r.note].filter(Boolean).join(' · '),
+        details: [t(r.type), t(r.region), entry?.place, new Date(r.date).toLocaleDateString(locale)].filter(Boolean).join(' · '),
+        why: [...r.tags.map((tag) => t(tag)), r.note].filter(Boolean).join(' · '),
         wantToBuy: r.wantToBuy,
         entry,
         bottleId: r.bottleId,
       }
     }),
     ...journal.entries
-      .filter((t) => starsOf(t) === null)
-      .map((t) => ({
-        key: t.id,
-        date: t.date,
-        wine: [t.wine, t.vintage].filter(Boolean).join(' '),
+      .filter((e) => starsOf(e) === null)
+      .map((e) => ({
+        key: e.id,
+        date: e.date,
+        wine: [e.wine, e.vintage].filter(Boolean).join(' '),
         stars: null,
-        details: [t.type, t.region, t.place, t.price ? `€${t.price}` : ''].filter(Boolean).join(' · '),
-        why: t.note,
+        details: [t(e.type), t(e.region), e.place, e.price ? `€${e.price}` : ''].filter(Boolean).join(' · '),
+        why: e.note,
         wantToBuy: true,
-        entry: t,
+        entry: e,
         bottleId: null,
       })),
   ].sort((a, b) => b.date.localeCompare(a.date))
   const shown = filter === 'buy' ? rows.filter((r) => r.wantToBuy) : rows
 
   const save = (entry: Tasting) => {
-    const exists = journal.entries.some((t) => t.id === entry.id)
-    onSave({ ...journal, entries: exists ? journal.entries.map((t) => (t.id === entry.id ? entry : t)) : [entry, ...journal.entries] })
+    const exists = journal.entries.some((e) => e.id === entry.id)
+    onSave({ ...journal, entries: exists ? journal.entries.map((e) => (e.id === entry.id ? entry : e)) : [entry, ...journal.entries] })
     setEditing(null)
   }
   const addFriend = () => {
-    const email = window.prompt('Google account email of the friend who can read your journal')?.trim().toLowerCase()
+    const email = window.prompt(t('Google account email of the friend who can read your journal'))?.trim().toLowerCase()
     if (email && !journal.friends.includes(email)) onSave({ ...journal, friends: [...journal.friends, email] })
   }
 
@@ -246,11 +247,10 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
     <section aria-labelledby="journal" className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       <div className="flex flex-col items-center gap-3 text-center">
         <h2 id="journal" className="font-serif text-4xl font-light">
-          Your journal
+          {t('Your journal')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Wines you drank or want to try. Add one with the + at the top: snap it, rate it now or save it for later. Every
-          rating shapes your palate and the sommelier's advice.
+          {t("Wines you drank or want to try. Add one with the + at the top: snap it, rate it now or save it for later. Every rating shapes your palate and the sommelier's advice.")}
         </p>
       </div>
 
@@ -259,9 +259,9 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
       <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Show">
         {(
           [
-            ['all', `All (${rows.length})`],
-            ['buy', `To buy (${rows.filter((r) => r.wantToBuy).length})`],
-            ...(canShare ? [['friends', `Friends (${friendJournals.length})`]] : []),
+            ['all', t('All ({n})', { n: rows.length })],
+            ['buy', t('To buy ({n})', { n: rows.filter((r) => r.wantToBuy).length })],
+            ...(canShare ? [['friends', t('Friends ({n})', { n: friendJournals.length })]] : []),
           ] as [Filter, string][]
         ).map(([id, label]) => (
           <button
@@ -283,7 +283,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
         <ul className="flex flex-col divide-y border-y">
           {shown.length === 0 && (
             <li className="py-12 text-center text-sm text-muted-foreground">
-              {filter === 'buy' ? 'Nothing saved to buy yet.' : 'No wines yet. Snap the next one you enjoy.'}
+              {t(filter === 'buy' ? 'Nothing saved to buy yet.' : 'No wines yet. Snap the next one you enjoy.')}
             </li>
           )}
           {shown.map((r) => (
@@ -291,11 +291,11 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="font-serif text-xl leading-tight">{r.wine}</span>
                 <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                  {r.stars !== null ? <Stars value={r.stars} size="sm" /> : <span className="text-primary">Not tasted yet</span>}
+                  {r.stars !== null ? <Stars value={r.stars} size="sm" /> : <span className="text-primary">{t('Not tasted yet')}</span>}
                   {r.details}
                 </span>
                 {r.why && <span className="text-sm text-muted-foreground">{r.why}</span>}
-                {r.wantToBuy && <span className="text-xs text-primary">To buy</span>}
+                {r.wantToBuy && <span className="text-xs text-primary">{t('To buy')}</span>}
               </div>
               {r.entry ? (
                 <div className="flex shrink-0 items-center">
@@ -305,17 +305,17 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
                       onClick={() => setEditing(r.entry)}
                       className="mr-1 text-xs text-primary underline underline-offset-4"
                     >
-                      Rate it
+                      {t('Rate it')}
                     </button>
                   )}
-                  <IconButton label="Edit" onClick={() => setEditing(r.entry)}>
+                  <IconButton label={t('Edit')} onClick={() => setEditing(r.entry)}>
                     <Pencil className="size-3.5" aria-hidden="true" />
                   </IconButton>
                   <IconButton
-                    label="Remove"
+                    label={t('Remove')}
                     onClick={() =>
-                      window.confirm(`Remove ${r.wine} from your journal?`) &&
-                      onSave({ ...journal, entries: journal.entries.filter((t) => t.id !== r.key) })
+                      window.confirm(t('Remove {name} from your journal?', { name: r.wine })) &&
+                      onSave({ ...journal, entries: journal.entries.filter((e) => e.id !== r.key) })
                     }
                   >
                     <X className="size-3.5" aria-hidden="true" />
@@ -327,7 +327,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
                   onClick={() => onSelectBottle(r.bottleId!)}
                   className="shrink-0 text-xs text-primary underline underline-offset-4"
                 >
-                  From your cellar
+                  {t('From your cellar')}
                 </button>
               )}
             </li>
@@ -338,11 +338,10 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
       {filter === 'friends' && (
         <div className="flex flex-col gap-6">
           <p className="text-sm text-muted-foreground">
-            Friends you add can read your journal, not change it. You see theirs once they add you too. Your palate stays
-            private.
+            {t('Friends you add can read your journal, not change it. You see theirs once they add you too. Your palate stays private.')}
           </p>
           <Button variant="outline" onClick={addFriend} className="self-center">
-            Add a friend
+            {t('Add a friend')}
           </Button>
           {friendJournals.map(({ email, journal: theirs }) => (
             <div key={email} className="flex flex-col gap-3 border-t pt-5">
@@ -353,24 +352,24 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
                   onClick={() => onSave({ ...journal, friends: journal.friends.filter((f) => f !== email) })}
                   className="text-xs text-muted-foreground underline underline-offset-4"
                 >
-                  Stop sharing
+                  {t('Stop sharing')}
                 </button>
               </div>
               {theirs === null ? (
-                <p className="text-sm text-muted-foreground">They can read your journal. Theirs shows here once they add you.</p>
+                <p className="text-sm text-muted-foreground">{t('They can read your journal. Theirs shows here once they add you.')}</p>
               ) : theirs.entries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No wines in their journal yet.</p>
+                <p className="text-sm text-muted-foreground">{t('No wines in their journal yet.')}</p>
               ) : (
                 <ul className="flex flex-col divide-y border-y">
-                  {theirs.entries.map((t) => (
-                    <li key={t.id} className="flex flex-col gap-1 py-3">
-                      <span className="font-serif text-lg leading-tight">{[t.wine, t.vintage].filter(Boolean).join(' ')}</span>
+                  {theirs.entries.map((e) => (
+                    <li key={e.id} className="flex flex-col gap-1 py-3">
+                      <span className="font-serif text-lg leading-tight">{[e.wine, e.vintage].filter(Boolean).join(' ')}</span>
                       <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                        {starsOf(t) !== null ? <Stars value={starsOf(t)} size="sm" /> : <span>Saved for later</span>}
-                        {[t.type, t.region, t.place].filter(Boolean).join(' · ')}
+                        {starsOf(e) !== null ? <Stars value={starsOf(e)} size="sm" /> : <span>{t('Saved for later')}</span>}
+                        {[t(e.type), t(e.region), e.place].filter(Boolean).join(' · ')}
                       </span>
-                      {(t.tags.length > 0 || t.note) && (
-                        <span className="text-sm text-muted-foreground">{[...t.tags, t.note].filter(Boolean).join(' · ')}</span>
+                      {(e.tags.length > 0 || e.note) && (
+                        <span className="text-sm text-muted-foreground">{[...e.tags.map((tag) => t(tag)), e.note].filter(Boolean).join(' · ')}</span>
                       )}
                     </li>
                   ))}

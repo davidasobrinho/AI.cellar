@@ -1,4 +1,5 @@
 import type { Region, Structure, Tier, WineType } from '../types'
+import { t } from './i18n'
 import type { RatedWine } from './taste'
 
 // How a wine is built, on six scales from 1 to 5. A wine read from its label
@@ -105,14 +106,14 @@ export function palateInWords(p: PalateShape): string[] {
   const lines: string[] = []
   for (const axis of AXES) {
     const value = p.liked[axis.key]
-    if (value >= 3.7) lines.push(`You lean towards ${axis.high} wines.`)
-    else if (value <= 2.3) lines.push(`You lean towards ${axis.low} wines.`)
+    if (value >= 3.7) lines.push(t('You lean towards {x} wines.', { x: t(axis.high) }))
+    else if (value <= 2.3) lines.push(t('You lean towards {x} wines.', { x: t(axis.low) }))
   }
   if (p.disliked) {
     for (const axis of AXES) {
       const gap = p.disliked[axis.key] - p.liked[axis.key]
-      if (gap >= 1) lines.push(`The wines you disliked were more ${axis.high} than the ones you liked.`)
-      else if (gap <= -1) lines.push(`The wines you disliked were more ${axis.low} than the ones you liked.`)
+      if (gap >= 1) lines.push(t('The wines you disliked were more {x} than the ones you liked.', { x: t(axis.high) }))
+      else if (gap <= -1) lines.push(t('The wines you disliked were more {x} than the ones you liked.', { x: t(axis.low) }))
     }
   }
   return lines

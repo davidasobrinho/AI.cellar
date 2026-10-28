@@ -8,6 +8,7 @@ import { styleWindow } from '../lib/windows'
 import { REGIONS, TIERS, WINE_TYPES } from '../types'
 import type { Bottle, Cellar, DrinkWindow } from '../types'
 import { Button, Field, SectionTitle, SelectField, SheetHeader, cn } from './ui'
+import { t } from '../lib/i18n'
 
 interface Props {
   bottle: Bottle | null
@@ -76,7 +77,7 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
       setPhotos((prev) => [...prev, ...urls].slice(0, 2))
       setError(null)
     } catch {
-      setError('That file could not be opened as an image.')
+      setError(t('That file could not be opened as an image.'))
     }
   }
 
@@ -94,7 +95,7 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
       })
       setScanned(true)
     } catch (e) {
-      setError(`The label could not be read. ${e instanceof Error ? e.message : ''}`)
+      setError(t('The label could not be read. {why}', { why: e instanceof Error ? e.message : '' }))
     } finally {
       setScanning(false)
     }
@@ -105,7 +106,7 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
     const typed = WINDOW_FIELDS.map(([key]) => numberOrNull(years[key]))
     const complete = typed.every((y) => y !== null)
     if (!complete && typed.some((y) => y !== null)) {
-      setError('Fill in all four years of the drinking window, or leave them all empty.')
+      setError(t('Fill in all four years of the drinking window, or leave them all empty.'))
       return
     }
     const [drinkFrom, peakFrom, peakTo, drinkUntil] = typed as number[]
@@ -114,72 +115,72 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
 
   return (
     <form onSubmit={submit} className="flex flex-col">
-      <SheetHeader eyebrow={bottle ? 'Editar garrafa' : 'Nova garrafa'} title={bottle ? 'Edit bottle' : 'Add a bottle'}>
-        {scanEnabled && 'Photograph the front and back label, and the details are filled in for you to check.'}
+      <SheetHeader eyebrow={bottle ? 'Editar garrafa' : 'Nova garrafa'} title={t(bottle ? 'Edit bottle' : 'Add a bottle')}>
+        {scanEnabled && t('Photograph the front and back label, and the details are filled in for you to check.')}
       </SheetHeader>
 
       {scanEnabled && (
         <section className="flex flex-col gap-4 border-b p-6">
-          <SectionTitle>Label photos</SectionTitle>
+          <SectionTitle>{t('Label photos')}</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             {[0, 1].map((i) =>
               photos[i] ? (
                 <div key={i} className="relative aspect-[3/4] overflow-hidden border bg-muted">
-                  <img src={photos[i]} alt={i === 0 ? 'Front label' : 'Back label'} className="size-full object-cover" />
+                  <img src={photos[i]} alt={t(i === 0 ? 'Front label' : 'Back label')} className="size-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
                     className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-background/90"
                   >
                     <X className="size-3.5" aria-hidden="true" />
-                    <span className="sr-only">Remove photo</span>
+                    <span className="sr-only">{t('Remove photo')}</span>
                   </button>
                 </div>
               ) : (
-                <PhotoSlot key={i} label={i === 0 ? 'Front label' : 'Back label'} onChange={addPhotos} disabled={i > photos.length} />
+                <PhotoSlot key={i} label={t(i === 0 ? 'Front label' : 'Back label')} onChange={addPhotos} disabled={i > photos.length} />
               ),
             )}
           </div>
           <Button onClick={scan} disabled={photos.length === 0 || scanning} className="h-11 tracking-wide">
             {scanning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
-            {scanning ? 'Reading label…' : scanned ? 'Read again' : 'Read label'}
+            {t(scanning ? 'Reading label…' : scanned ? 'Read again' : 'Read label')}
           </Button>
           {scanned && !error && (
             <p className="border-l-2 border-primary bg-muted/70 p-3 text-sm text-muted-foreground">
-              Label read. The drinking window and serving notes are estimates. Check everything before saving.
+              {t('Label read. The drinking window and serving notes are estimates. Check everything before saving.')}
             </p>
           )}
         </section>
       )}
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Wine</SectionTitle>
-        <Field label="Producer" value={draft.producer} onChange={(v) => set('producer', v)} />
-        <Field label="Name" value={draft.name} onChange={(v) => set('name', v)} required />
+        <SectionTitle>{t('Wine')}</SectionTitle>
+        <Field label={t('Producer')} value={draft.producer} onChange={(v) => set('producer', v)} />
+        <Field label={t('Name')} value={draft.name} onChange={(v) => set('name', v)} required />
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label="Vintage"
+            label={t('Vintage')}
             inputMode="numeric"
-            placeholder="No vintage"
+            placeholder={t('No vintage')}
             value={draft.vintage ?? ''}
             onChange={(v) => set('vintage', numberOrNull(v))}
           />
-          <SelectField label="Type" value={draft.type} options={WINE_TYPES} onChange={(v) => set('type', v)} />
+          <SelectField label={t('Type')} value={draft.type} options={WINE_TYPES} onChange={(v) => set('type', v)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Region" value={draft.region} options={REGIONS} onChange={(v) => set('region', v)} />
-          {isStill && <SelectField label="Level" value={draft.tier} options={TIERS} onChange={(v) => set('tier', v)} />}
+          <SelectField label={t('Region')} value={draft.region} options={REGIONS} onChange={(v) => set('region', v)} />
+          {isStill && <SelectField label={t('Level')} value={draft.tier} options={TIERS} onChange={(v) => set('tier', v)} />}
         </div>
-        <Field label="Grapes" value={draft.grapes ?? ''} onChange={(v) => set('grapes', v)} />
+        <Field label={t('Grapes')} value={draft.grapes ?? ''} onChange={(v) => set('grapes', v)} />
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Drinking window</SectionTitle>
+        <SectionTitle>{t('Drinking window')}</SectionTitle>
         <div className="grid grid-cols-4 gap-3">
           {WINDOW_FIELDS.map(([key, label]) => (
             <Field
               key={key}
-              label={label}
+              label={t(label)}
               inputMode="numeric"
               placeholder={estimate ? `${estimate[key]}` : ''}
               value={years[key]}
@@ -188,28 +189,28 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Leave empty to use an estimate from the style of the wine{estimate ? ', shown in grey' : ''}.
+          {t('Leave empty to use an estimate from the style of the wine')}{estimate ? t(', shown in grey') : ''}.
         </p>
       </section>
 
       <section className="flex flex-col gap-4 p-6">
-        <SectionTitle>In your cellar</SectionTitle>
+        <SectionTitle>{t('In your cellar')}</SectionTitle>
         <div className="grid grid-cols-3 gap-3">
           <Field
-            label="Bottles"
+            label={t('Bottles')}
             type="number"
             min={0}
             value={draft.quantity}
             onChange={(v) => set('quantity', Math.max(0, Number(v)))}
           />
           <Field
-            label="Price today (€)"
+            label={t('Price today (€)')}
             inputMode="decimal"
             value={draft.priceToday ?? ''}
             onChange={(v) => set('priceToday', numberOrNull(v))}
           />
           <Field
-            label="Price paid (€)"
+            label={t('Price paid (€)')}
             inputMode="decimal"
             value={draft.pricePaid ?? ''}
             onChange={(v) => set('pricePaid', numberOrNull(v))}
@@ -217,21 +218,21 @@ export function BottleForm({ bottle, cellars, defaultCellarId, onSave }: Props) 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <SelectField
-            label="Cellar"
+            label={t('Cellar')}
             value={draft.cellarId}
             options={cellars.map((c) => ({ value: c.id, label: c.name }))}
             onChange={(v) => set('cellarId', v)}
           />
-          <Field label="Location" placeholder="Rack B · Row 3" value={draft.location} onChange={(v) => set('location', v)} />
+          <Field label={t('Location')} placeholder="Rack B · Row 3" value={draft.location} onChange={(v) => set('location', v)} />
         </div>
-        <Field label="Notes" value={draft.notes} onChange={(v) => set('notes', v)} />
+        <Field label={t('Notes')} value={draft.notes} onChange={(v) => set('notes', v)} />
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
         <Button type="submit" className="mt-2 h-11 tracking-wide">
-          {bottle ? 'Save changes' : 'Add to cave'}
+          {t(bottle ? 'Save changes' : 'Add to cave')}
         </Button>
       </section>
     </form>

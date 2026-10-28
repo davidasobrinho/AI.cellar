@@ -1,6 +1,7 @@
 import { AXES, palateInWords } from '../lib/structure'
 import type { PalateShape } from '../lib/structure'
 import type { Structure } from '../types'
+import { t } from '../lib/i18n'
 
 const SIZE = 320
 const CENTER = SIZE / 2
@@ -24,7 +25,7 @@ export function PalateGraph({ shape }: { shape: PalateShape }) {
 
   return (
     <figure className="flex flex-col items-center gap-5">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-sm" role="img" aria-label="Palate graph">
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-sm" role="img" aria-label={t('Palate graph')}>
         {RINGS.map((ring) => (
           <polygon key={ring} points={outline(() => ring)} className="fill-none stroke-border" strokeWidth={1} />
         ))}
@@ -41,7 +42,7 @@ export function PalateGraph({ shape }: { shape: PalateShape }) {
                 dominantBaseline="middle"
                 className="fill-muted-foreground text-[10px] uppercase tracking-[0.15em]"
               >
-                {axis.label}
+                {t(axis.label)}
               </text>
             </g>
           )
@@ -69,11 +70,11 @@ export function PalateGraph({ shape }: { shape: PalateShape }) {
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-2">
             <span className="h-2 w-5 border-2 border-primary bg-primary/25" aria-hidden="true" />
-            Liked ({shape.likedCount})
+            {t('Liked')} ({shape.likedCount})
           </span>
           <span className="flex items-center gap-2">
             <span className="h-0 w-5 border-t-2 border-dashed border-muted-foreground" aria-hidden="true" />
-            Disliked ({shape.dislikedCount})
+            {t('Disliked')} ({shape.dislikedCount})
           </span>
         </div>
         {words.length > 0 && (
@@ -94,8 +95,8 @@ export function StructureBars({ structure }: { structure: Structure }) {
     <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
       {AXES.map((axis) => (
         <div key={axis.key} className="flex flex-col gap-1.5">
-          <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{axis.label}</dt>
-          <dd className="flex gap-1" aria-label={`${structure[axis.key]} out of 5`}>
+          <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{t(axis.label)}</dt>
+          <dd className="flex gap-1" aria-label={t('{n} out of 5', { n: structure[axis.key] })}>
             {RINGS.map((n) => (
               <span key={n} className={n <= Math.round(structure[axis.key]) ? 'h-1.5 flex-1 bg-primary' : 'h-1.5 flex-1 bg-muted'} />
             ))}

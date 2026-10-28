@@ -2,6 +2,7 @@ import { BAND_LABELS, priceBand } from '../lib/price'
 import type { WindowStatus } from '../lib/windows'
 import type { DrinkWindow } from '../types'
 import { cn } from './ui'
+import { t } from '../lib/i18n'
 
 export const STATUS_TEXT: Record<WindowStatus, string> = {
   'Drink soon': 'text-status-soon',
@@ -33,7 +34,7 @@ export function StatusBadge({ status, className }: { status: WindowStatus; class
       )}
     >
       <span className={cn('size-1.5', STATUS_BG[status])} aria-hidden="true" />
-      {status}
+      {t(status)}
     </span>
   )
 }
@@ -45,7 +46,7 @@ export function Sticker({ price, className }: { price: number | null; className?
   const band = priceBand(price)
   return (
     <span
-      title={band ? BAND_LABELS[band] : 'No price yet'}
+      title={band ? BAND_LABELS[band] : t('No price yet')}
       className={cn(
         'inline-block size-3 shrink-0 rounded-full',
         band ? STICKER[band] : 'border border-dashed border-input',

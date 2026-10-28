@@ -3,6 +3,7 @@ import type { Bottle, Profile, Tasting } from '../types'
 import { generateJson, readWineListAt } from './ai'
 import { tasteText } from './taste'
 import { drinkingWindow } from './windows'
+import { lang } from './i18n'
 
 // The private sommelier: what to open at home, what to order from a wine list,
 // or what to buy, for a given meal and moment.
@@ -59,7 +60,7 @@ Rules:
 - When buying, suggest styles, regions and grapes with one or two example producers. You do not know today's prices or promotions: say so in the caution.
 - Fit the person's taste: their own words are firm rules, and their liked and disliked wines and tags show what to favour and avoid. Say in basedOn exactly what you used. If there is little or nothing, leave basedOn empty and give sound general advice.
 - Portuguese wines first.
-- Never invent a producer, a wine or a price.`
+- Never invent a producer, a wine or a price.${lang === 'pt' ? '\n- Write every text field in European Portuguese (Portugal), addressing the person as tu.' : ''}`
 
 const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter']
 

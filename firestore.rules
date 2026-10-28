@@ -1,25 +1,39 @@
 rules_version = '2';
 
-// A cellar and its bottles can be read and changed only by its members,
-// identified by the verified email of their Google account.
+// People are identified by the verified email of their Google account.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null && request.auth.token.email_verified;
     }
+    function me() {
+      return request.auth.token.email;
+    }
 
     // A person's taste profile is theirs alone.
     match /profiles/{email} {
-      allow read, write: if signedIn() && request.auth.token.email == email;
+      allow read, write: if signedIn() && me() == email;
     }
 
+    // A person's journal: they write it, and the friends it lists can read it.
+    match /journals/{email} {
+      allow write: if signedIn() && me() == email;
+      allow read: if signedIn() && (me() == email || me() in resource.data.friends);
+    }
+
+    // A cellar's members can change it and its bottles. Its viewers can only look.
     match /cellars/{cellarId} {
-      allow create: if signedIn() && request.auth.token.email in request.resource.data.members;
-      allow read, update, delete: if signedIn() && request.auth.token.email in resource.data.members;
+      function cellar() {
+        return get(/databases/$(database)/documents/cellars/$(cellarId)).data;
+      }
+
+      allow create: if signedIn() && me() in request.resource.data.members;
+      allow read: if signedIn() && (me() in resource.data.members || me() in resource.data.get('viewers', []));
+      allow update, delete: if signedIn() && me() in resource.data.members;
 
       match /bottles/{bottleId} {
-        allow read, write: if signedIn()
-          && request.auth.token.email in get(/databases/$(database)/documents/cellars/$(cellarId)).data.members;
+        allow read: if signedIn() && (me() in cellar().members || me() in cellar().get('viewers', []));
+        allow write: if signedIn() && me() in cellar().members;
       }
     }
   }

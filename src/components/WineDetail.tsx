@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Pencil, Trash2, Wine as WineIcon } from 'lucide-react'
 import { BAND_LABELS, euros, priceBand } from '../lib/price'
 import { STATUS_DESCRIPTION, drinkingWindow } from '../lib/windows'
-import { RATINGS } from '../types'
-import type { Bottle, LabelDetails, Rating } from '../types'
+import type { Bottle, LabelDetails } from '../types'
 import { styleStructure } from '../lib/structure'
-import { TagPicker } from './Palate'
+import { starsOf } from '../lib/taste'
+import { Stars, TagPicker } from './Journal'
 import { StructureBars } from './PalateGraph'
 import { StatusBadge, Sticker, WindowBar } from './status'
 import { Button, Field, SectionTitle, SheetHeader, cn } from './ui'
@@ -16,12 +16,14 @@ interface Props {
   onChange: (bottle: Bottle) => void
   onEdit: () => void
   onDelete: () => void
+  // A cellar a friend shares to look at only.
+  readOnly?: boolean
 }
 
 const YEAR = new Date().getFullYear()
 
-export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: Props) {
-  const [rating, setRating] = useState<Rating | null>(null)
+export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, readOnly = false }: Props) {
+  const [stars, setStars] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const w = drinkingWindow(bottle)
@@ -33,9 +35,9 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
     onChange({
       ...bottle,
       quantity: bottle.quantity - 1,
-      openings: [{ date: new Date().toISOString(), rating, note, tags }, ...bottle.openings],
+      openings: [{ date: new Date().toISOString(), stars, rating: null, note, tags }, ...bottle.openings],
     })
-    setRating(null)
+    setStars(null)
     setNote('')
     setTags([])
   }
@@ -125,25 +127,20 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Open a bottle</SectionTitle>
-        <div className="grid grid-cols-3 gap-2">
-          {RATINGS.map((r) => (
-            <Button
-              key={r}
-              variant="outline"
-              className={cn(rating === r && 'border-primary bg-accent')}
-              onClick={() => setRating(rating === r ? null : r)}
-            >
-              {r}
+        <SectionTitle>{readOnly ? 'Opened' : 'Open a bottle'}</SectionTitle>
+        {readOnly ? (
+          <p className="text-sm text-muted-foreground">This cellar is shared with you to look at. Only its owners can open or change bottles.</p>
+        ) : (
+          <>
+            <Stars value={stars} onChange={(n) => setStars(stars === n ? null : n)} />
+            <TagPicker value={tags} onChange={setTags} />
+            <Field label="Occasion, food, what you thought" value={note} onChange={setNote} />
+            <Button className="h-11" onClick={open} disabled={bottle.quantity === 0}>
+              <WineIcon aria-hidden="true" />
+              Open a bottle
             </Button>
-          ))}
-        </div>
-        <TagPicker value={tags} onChange={setTags} />
-        <Field label="Occasion, food, what you thought" value={note} onChange={setNote} />
-        <Button className="h-11" onClick={open} disabled={bottle.quantity === 0}>
-          <WineIcon aria-hidden="true" />
-          Open a bottle
-        </Button>
+          </>
+        )}
 
         {bottle.openings.length > 0 && (
           <ul className="flex flex-col divide-y border-y text-sm">
@@ -151,11 +148,11 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
               <li key={o.date} className="flex items-baseline justify-between gap-3 py-2">
                 <span>
                   <span className="tabular-nums text-muted-foreground">{new Date(o.date).toLocaleDateString('en-GB')}</span>
-                  {o.rating && ` · ${o.rating}`}
+                  {starsOf(o) !== null && ` · ${starsOf(o)}★`}
                   {o.tags && o.tags.length > 0 && ` · ${o.tags.join(', ')}`}
                   {o.note && ` · ${o.note}`}
                 </span>
-                {i === 0 && (
+                {i === 0 && !readOnly && (
                   <button type="button" onClick={undo} className="shrink-0 text-xs text-primary underline underline-offset-4">
                     Undo
                   </button>
@@ -166,7 +163,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete }: P
         )}
       </section>
 
-      <div className="mt-auto flex justify-between gap-2 p-6">
+      <div className={cn('mt-auto flex justify-between gap-2 p-6', readOnly && 'hidden')}>
         <Button
           variant="danger"
           onClick={() => window.confirm(`Remove ${bottle.name} from the cellar?`) && onDelete()}

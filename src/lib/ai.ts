@@ -1,5 +1,5 @@
 import { GoogleAIBackend, getAI, getGenerativeModel } from 'firebase/ai'
-import type { Schema } from 'firebase/ai'
+import type { ModelParams, Schema } from 'firebase/ai'
 import { app, firebaseEnabled } from './firebase'
 
 // Gemini, called through the Firebase project (AI Logic must be turned on there).
@@ -16,8 +16,10 @@ const isQuotaError = (e: unknown) => /429|quota|RESOURCE_EXHAUSTED/i.test(e inst
 // A model that is overloaded or timed out: the next one may still answer.
 const isBusyError = (e: unknown) => /\[50\d|high demand|overloaded|UNAVAILABLE|No answer after/i.test(e instanceof Error ? e.message : '')
 
-// Asks for an answer in the shape of the schema. Photos are JPEG or PNG data URLs.
-export async function generateJson<T>(system: string, schema: Schema, prompt: string, photos: string[] = []): Promise<T> {
+type Settings = Omit<ModelParams, 'model'>
+
+// Sends the request to the best model that still has allowance today, and returns its text.
+async function ask(settings: Settings, prompt: string, photos: string[] = []): Promise<string> {
   const parts = [
     prompt,
     ...photos.map((dataUrl) => {
@@ -27,11 +29,7 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
   ]
   let busy = false
   for (const name of MODELS.filter((m) => !usedUp.has(m))) {
-    const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), {
-      model: name,
-      systemInstruction: system,
-      generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
-    })
+    const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), { ...settings, model: name })
     try {
       // The App Check step can wait forever when the browser check does not complete.
       const result = await Promise.race([
@@ -40,7 +38,7 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
           setTimeout(() => reject(new Error('No answer after 60 seconds.')), TIMEOUT_MS),
         ),
       ])
-      return JSON.parse(result.response.text()) as T
+      return result.response.text()
     } catch (e) {
       if (isQuotaError(e)) usedUp.add(name)
       else if (isBusyError(e)) busy = true
@@ -52,6 +50,30 @@ export async function generateJson<T>(system: string, schema: Schema, prompt: st
       ? 'The AI models are busy right now. Try again in a minute.'
       : "Today's free AI allowance is used up. It resets within a day.",
   )
+}
+
+// Asks for an answer in the shape of the schema. Photos are JPEG or PNG data URLs.
+export async function generateJson<T>(system: string, schema: Schema, prompt: string, photos: string[] = []): Promise<T> {
+  const text = await ask(
+    { systemInstruction: system, generationConfig: { responseMimeType: 'application/json', responseSchema: schema } },
+    prompt,
+    photos,
+  )
+  return JSON.parse(text) as T
+}
+
+// Opens a web page, such as the menu behind a restaurant's QR code, and copies
+// out its wine list as plain text. A separate step, because a model reading a
+// link cannot also be held to an answer shape.
+export async function readWineListAt(url: string): Promise<string> {
+  const text = await ask(
+    { tools: [{ urlContext: {} }] },
+    `Open ${url}. It is a restaurant menu. Copy out every wine on it, one per line, with producer, wine name, vintage, colour, and the price of a bottle and of a glass when shown. Copy exactly what is written; never add a wine that is not there. If the page cannot be opened or has no wine list, answer only: NO WINE LIST.`,
+  )
+  if (/NO WINE LIST/.test(text) || text.trim().length < 20) {
+    throw new Error('No wine list could be read at that link. Try pasting the list instead.')
+  }
+  return text.trim()
 }
 
 const MAX_SIDE = 1600

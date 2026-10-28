@@ -82,10 +82,12 @@ export function samplePalate(): RatedWine[] {
       wine: `${producer} ${name}`,
       type,
       region,
+      stars: 5,
       rating: 'Liked',
       tags: [],
       note: '',
-      fromCellar: false,
+      bottleId: null,
+      wantToBuy: false,
       structure: structureOf(pick),
     }
   })

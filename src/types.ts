@@ -53,9 +53,15 @@ export const TASTE_TAGS = [
   'Thin',
 ] as const
 
-export interface Opening {
+// Ratings are 1 to 5 stars. Early entries used Liked / OK / Disliked instead,
+// read as 4, 3 and 2 stars.
+export interface Rated {
+  stars?: number | null
+  rating?: Rating | null
+}
+
+export interface Opening extends Rated {
   date: string
-  rating: Rating | null
   note: string
   tags?: string[]
 }
@@ -72,23 +78,40 @@ export interface Structure {
   age: number
 }
 
-// A wine tried somewhere, not a bottle in the cellar.
-export interface Tasting {
+// A wine tried anywhere, kept in the journal whether or not it is in a cellar.
+export interface Tasting extends Rated {
   id: string
   date: string
   wine: string
   type: WineType
   region: Region
-  rating: Rating
   tags: string[]
   note: string
+  // Added with the journal, so early entries do not have these.
+  vintage?: number | null
+  price?: number | null
+  // Where it was drunk or bought: a restaurant, a friend's, a shop.
+  place?: string
+  wantToBuy?: boolean
+  structure?: Structure | null
 }
 
-// One person's taste. It belongs to the account, not to a cellar.
+// One person's taste. It belongs to the account, not to a cellar, and only
+// that person can read it.
 export interface Profile {
   // In the person's own words, including firm rules such as "no sweet wines".
   about: string
+  // Journal entries from before the journal existed. Moved to the journal on load.
   tastings: Tasting[]
+  // The name in the header, such as "CAVE MARIA".
+  title?: string
+}
+
+// One person's wine journal. Readable by the friends listed in it.
+export interface Journal {
+  entries: Tasting[]
+  // Emails of the people allowed to read it.
+  friends: string[]
 }
 
 // Calendar years.
@@ -145,8 +168,10 @@ export interface Bottle {
 export interface Cellar {
   id: string
   name: string
-  // Emails of the people who share the cellar. Absent when it is kept in the browser.
+  // Emails of the people who can change the cellar. Absent when it is kept in the browser.
   members?: string[]
+  // Emails of the people who can only look at it.
+  viewers?: string[]
 }
 
 export interface CellarData {

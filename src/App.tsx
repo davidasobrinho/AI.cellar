@@ -1,26 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ComponentProps, FormEvent, ReactNode } from 'react'
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
 import { BottleForm } from './components/BottleForm'
+import { Journal } from './components/Journal'
 import { Palate } from './components/Palate'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
-import { Button, Sheet, cn } from './components/ui'
+import { Button, Field, SectionTitle, Sheet, SheetHeader, cn } from './components/ui'
 import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
 import { auth, firebaseEnabled } from './lib/firebase'
 import { SHOWCASE_CELLAR, showcaseBottles } from './lib/showcase'
 import { useFirebaseStore, useLocalStore } from './lib/store'
-import type { Store } from './lib/store'
+import type { Role, Store } from './lib/store'
 import { STATUS_ORDER, drinkingWindow } from './lib/windows'
 import type { WindowStatus } from './lib/windows'
-import type { Bottle } from './types'
+import type { Bottle, Cellar } from './types'
 
-function Brand() {
-  return <h1 className="font-serif text-2xl font-light tracking-[0.35em] md:text-3xl">CAVE SOBRI</h1>
+const DEFAULT_TITLE = 'CAVE SOBRI'
+
+// A link shared to the app from another app (Android's Share menu), such as the
+// menu page a restaurant's QR code opened. Read once, then cleared from the address.
+const SHARED_LINK = (() => {
+  const params = new URLSearchParams(window.location.search)
+  const found = [params.get('url'), params.get('text'), params.get('title')]
+    .map((v) => v?.match(/https?:\/\/\S+/)?.[0])
+    .find(Boolean)
+  if (params.has('url') || params.has('text')) window.history.replaceState(null, '', '/')
+  return found
+})()
+
+function Brand({ title = DEFAULT_TITLE }: { title?: string }) {
+  return <h1 className="text-center font-serif text-2xl font-light tracking-[0.35em] md:text-3xl">{title}</h1>
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-5 text-center">
       <Brand />
@@ -46,7 +61,7 @@ function SharedApp() {
   if (user === null || !user.email) {
     return (
       <Centered>
-        <p className="text-sm text-muted-foreground">Sign in to see the cellars shared with you.</p>
+        <p className="text-sm text-muted-foreground">Sign in to see your cellars and the ones shared with you.</p>
         <Button className="h-11 px-6" onClick={() => void signInWithPopup(auth!, new GoogleAuthProvider())}>
           Sign in with Google
         </Button>
@@ -82,9 +97,10 @@ function Account({ email }: { email: string }) {
   )
 }
 
-type View = 'cellar' | 'sommelier' | 'palate'
+type View = 'cellar' | 'journal' | 'sommelier' | 'palate'
 const VIEWS: { id: View; label: string }[] = [
   { id: 'cellar', label: 'Cellar' },
+  { id: 'journal', label: 'Journal' },
   { id: 'sommelier', label: 'Sommelier' },
   { id: 'palate', label: 'Palate' },
 ]
@@ -95,9 +111,9 @@ const LAYOUTS: { id: Layout; label: string }[] = [
   { id: 'timeline', label: 'Timeline' },
 ]
 
-type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | null
+type Panel = { kind: 'detail'; id: string } | { kind: 'form'; bottle: Bottle | null } | { kind: 'share'; cellarId: string } | null
 
-function Chip({ active, className, ...props }: React.ComponentProps<'button'> & { active: boolean }) {
+function Chip({ active, className, ...props }: ComponentProps<'button'> & { active: boolean }) {
   return (
     <button
       type="button"
@@ -112,14 +128,93 @@ function Chip({ active, className, ...props }: React.ComponentProps<'button'> & 
   )
 }
 
+function ShareForm({ cellar, account, store }: { cellar: Cellar; account?: string; store: Store }) {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<Role>('view')
+  const people = [
+    ...(cellar.members ?? []).map((m) => ({ email: m, role: 'Can edit' })),
+    ...(cellar.viewers ?? []).map((v) => ({ email: v, role: 'Can view' })),
+  ].filter((p) => p.email !== account)
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    store.shareCellar!(cellar.id, email, role)
+    setEmail('')
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col">
+      <SheetHeader eyebrow="Partilhar" title={`Share ${cellar.name}`}>
+        They sign in with that Google account and the cellar appears in their app, next to their own.
+      </SheetHeader>
+      <section className="flex flex-col gap-4 border-b p-6">
+        <Field label="Their Google email" type="email" value={email} onChange={setEmail} required />
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="What they can do">
+          {(
+            [
+              ['view', 'Can view', 'Look only'],
+              ['edit', 'Can edit', 'Add, open, change'],
+            ] as [Role, string, string][]
+          ).map(([id, label, hint]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={role === id}
+              onClick={() => setRole(id)}
+              className={cn(
+                'flex flex-col gap-0.5 rounded-md border p-3 text-left text-sm transition-colors',
+                role === id ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground/40',
+              )}
+            >
+              {label}
+              <span className={cn('text-xs', role === id ? 'text-background/70' : 'text-muted-foreground')}>{hint}</span>
+            </button>
+          ))}
+        </div>
+        <Button type="submit" className="h-11">
+          Share
+        </Button>
+      </section>
+      {people.length > 0 && (
+        <section className="flex flex-col gap-3 p-6">
+          <SectionTitle>Shared with</SectionTitle>
+          <ul className="flex flex-col divide-y border-y text-sm">
+            {people.map((p) => (
+              <li key={p.email} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 truncate">
+                  {p.email} <span className="text-muted-foreground">· {p.role}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => store.unshareCellar!(cellar.id, p.email)}
+                  className="shrink-0 text-xs text-muted-foreground underline underline-offset-4"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </form>
+  )
+}
+
 function CellarApp({ store, account }: { store: Store; account?: string }) {
-  const { data } = store
-  const [view, setView] = useState<View>('cellar')
+  const { data, profile } = store
+  const [view, setView] = useState<View>(SHARED_LINK ? 'sommelier' : 'cellar')
   const [layout, setLayout] = useState<Layout>('list')
   const [status, setStatus] = useState<WindowStatus | null>(null)
   // The cellars being looked at. None chosen means all of them.
   const [chosen, setChosen] = useState<string[]>([])
   const [panel, setPanel] = useState<Panel>(null)
+  const title = profile.title?.trim() || DEFAULT_TITLE
+
+  // The name saved on a phone's home screen is the page title when it is added.
+  useEffect(() => {
+    document.title = title.replace(/\b(\p{L})(\p{L}*)/gu, (_, a: string, b: string) => a + b.toLowerCase())
+    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', document.title)
+  }, [title])
 
   // A chosen cellar that has since been deleted no longer counts.
   const shown = chosen.filter((id) => data.cellars.some((c) => c.id === id))
@@ -136,35 +231,40 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
       .sort((a, b) => rank(a) - rank(b) || until(a) - until(b))
   }, [inCellar, status])
 
+  const editableCellars = data.cellars.filter((c) => store.canEdit(c.id))
+  const myBottles = data.bottles.filter((b) => store.canEdit(b.cellarId))
   // Sharing and deleting act on one cellar, so they show when exactly one is chosen.
   const selected = shown.length === 1 ? data.cellars.find((c) => c.id === shown[0]) : undefined
+  const selectedEditable = selected !== undefined && store.canEdit(selected.id)
   const toggle = (id: string) => setChosen(shown.includes(id) ? shown.filter((c) => c !== id) : [...shown, id])
   const cellarView = view === 'cellar'
   const detail = panel?.kind === 'detail' ? data.bottles.find((b) => b.id === panel.id) : undefined
+  const sharing = panel?.kind === 'share' ? data.cellars.find((c) => c.id === panel.cellarId) : undefined
   const select = (b: Bottle) => setPanel({ kind: 'detail', id: b.id })
 
   const addCellar = () => {
     const name = window.prompt('Name of the new cellar')?.trim()
     if (name) store.addCellar(name)
   }
-  const share = () => {
-    const email = window.prompt(`Google account email of the person to share "${selected!.name}" with`)?.trim()
-    if (email) store.shareCellar!(selected!.id, email)
-  }
   const removeCellar = () => {
     const count = data.bottles.filter((b) => b.cellarId === selected!.id).length
-    const shared = (selected!.members?.length ?? 1) > 1 ? ' It will disappear for everyone it is shared with.' : ''
-    if (window.confirm(`Delete the cellar "${selected!.name}" and its ${count} wines? This cannot be undone.${shared}`)) {
+    const others = (selected!.members?.length ?? 1) + (selected!.viewers?.length ?? 0) > 1
+    const note = others ? ' It will disappear for everyone it is shared with.' : ''
+    if (window.confirm(`Delete the cellar "${selected!.name}" and its ${count} wines? This cannot be undone.${note}`)) {
       store.deleteCellar(selected!.id)
     }
+  }
+  const rename = () => {
+    const next = window.prompt('Name at the top of your app, for example CAVE MARIA', title)?.trim()
+    if (next !== undefined) store.saveProfile({ ...profile, title: next.toUpperCase() })
   }
 
   return (
     <div className="min-h-dvh">
       <header>
-        <div className="mx-auto grid h-24 max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5">
+        <div className="mx-auto grid h-24 max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-5">
           <span aria-hidden="true" />
-          <Brand />
+          <Brand title={title} />
           <div className="flex justify-end">
             <Button onClick={() => setPanel({ kind: 'form', bottle: null })}>
               <Plus aria-hidden="true" />
@@ -174,7 +274,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           </div>
         </div>
         <nav aria-label="Views" className="border-y">
-          <div className="mx-auto flex max-w-6xl justify-center gap-6 overflow-x-auto px-5 sm:gap-8">
+          <div className="mx-auto flex max-w-6xl justify-center gap-5 overflow-x-auto px-5 sm:gap-8">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -182,7 +282,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
                 onClick={() => setView(v.id)}
                 aria-current={view === v.id ? 'page' : undefined}
                 className={cn(
-                  '-mb-px h-12 border-b-2 text-sm transition-colors',
+                  '-mb-px h-12 shrink-0 border-b-2 text-sm transition-colors',
                   view === v.id
                     ? 'border-foreground font-normal text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -202,12 +302,38 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
           </p>
         )}
 
-        {/* Sommelier and Palate always draw on every cellar the person can see. */}
-        {view === 'sommelier' && (
-          <Sommelier bottles={data.bottles} rated={data.bottles} profile={store.profile} onSelect={select} />
+        {view === 'journal' && (
+          <Journal
+            journal={store.journal}
+            bottles={myBottles}
+            friendJournals={store.friendJournals}
+            canShare={firebaseEnabled}
+            onSave={store.saveJournal}
+            onSelectBottle={(id) => setPanel({ kind: 'detail', id })}
+          />
         )}
 
-        {view === 'palate' && <Palate profile={store.profile} bottles={data.bottles} onSave={store.saveProfile} />}
+        {/* Sommelier and Palate draw on the person's own cellars, not on cellars friends share to look at. */}
+        {view === 'sommelier' && (
+          <Sommelier
+            bottles={myBottles}
+            rated={myBottles}
+            journal={store.journal.entries}
+            profile={profile}
+            sharedLink={SHARED_LINK}
+            onSelect={select}
+          />
+        )}
+
+        {view === 'palate' && (
+          <Palate
+            profile={profile}
+            bottles={myBottles}
+            journal={store.journal.entries}
+            onSave={store.saveProfile}
+            onOpenJournal={() => setView('journal')}
+          />
+        )}
 
         {cellarView && (
           <div className="flex flex-col items-center gap-3">
@@ -218,6 +344,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
               {data.cellars.map((c) => (
                 <Chip key={c.id} active={shown.includes(c.id)} onClick={() => toggle(c.id)}>
                   {c.name}
+                  {!store.canEdit(c.id) && <span className="text-[10px] uppercase tracking-wider opacity-60">view</span>}
                 </Chip>
               ))}
             </div>
@@ -230,21 +357,19 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
                   Add showcase wines
                 </Button>
               )}
-              {store.shareCellar && selected && (
-                <Button variant="ghost" className="h-8" onClick={share}>
+              {store.shareCellar && selectedEditable && (
+                <Button variant="ghost" className="h-8" onClick={() => setPanel({ kind: 'share', cellarId: selected.id })}>
                   Share
                 </Button>
               )}
-              {selected && data.cellars.length > 1 && (
+              {selectedEditable && editableCellars.length > 1 && (
                 <Button variant="danger" className="h-8" onClick={removeCellar}>
                   Delete cellar
                 </Button>
               )}
             </div>
-            {selected?.members && selected.members.length > 1 && (
-              <p className="text-xs text-muted-foreground">
-                Shared with {selected.members.filter((m) => m !== account).join(', ')}
-              </p>
+            {selected && !selectedEditable && (
+              <p className="text-xs text-muted-foreground">Shared with you to look at. You cannot change it.</p>
             )}
           </div>
         )}
@@ -299,6 +424,9 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-5 py-10 text-center">
           <span className="font-normal">SOBRI</span>
           <span className="text-xs text-muted-foreground">Sealed with Portuguese cork · Porto</span>
+          <button type="button" onClick={rename} className="text-xs text-muted-foreground underline underline-offset-4">
+            Change the name at the top
+          </button>
           {account && <Account email={account} />}
         </div>
       </footer>
@@ -309,6 +437,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
             key={detail.id}
             bottle={detail}
             cellarName={data.cellars.find((c) => c.id === detail.cellarId)?.name ?? ''}
+            readOnly={!store.canEdit(detail.cellarId)}
             onChange={store.putBottle}
             onEdit={() => setPanel({ kind: 'form', bottle: detail })}
             onDelete={() => {
@@ -320,8 +449,8 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
         {panel?.kind === 'form' && (
           <BottleForm
             bottle={panel.bottle}
-            cellars={data.cellars}
-            defaultCellarId={shown[0] ?? data.cellars[0].id}
+            cellars={editableCellars}
+            defaultCellarId={shown.find((id) => store.canEdit(id)) ?? editableCellars[0].id}
             onSave={(bottle) => {
               store.putBottle(bottle)
               setStatus(null)
@@ -329,6 +458,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
             }}
           />
         )}
+        {sharing && <ShareForm cellar={sharing} account={account} store={store} />}
       </Sheet>
     </div>
   )

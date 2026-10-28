@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Bottle } from '../types'
 import { cellarValue, priceBand } from './price'
+import { feeling, ratedWines, starsOf } from './taste'
 import { closingFirst, drinkingWindow } from './windows'
 
 const bottle = (over: Partial<Bottle>): Bottle => ({
@@ -70,6 +71,30 @@ describe('closingFirst', () => {
       2026,
     )
     expect(list.map((b) => b.id)).toEqual(['fading', 'last-peak-year'])
+  })
+})
+
+describe('stars', () => {
+  it('reads old Liked / OK / Disliked ratings as 4, 3 and 2 stars', () => {
+    expect(starsOf({ rating: 'Liked' })).toBe(4)
+    expect(starsOf({ rating: 'OK' })).toBe(3)
+    expect(starsOf({ rating: 'Disliked' })).toBe(2)
+    expect(starsOf({ stars: 5, rating: 'Disliked' })).toBe(5)
+    expect(starsOf({})).toBeNull()
+  })
+
+  it('counts 4 and 5 stars as liked and 1 and 2 as disliked', () => {
+    expect([1, 2, 3, 4, 5].map(feeling)).toEqual(['Disliked', 'Disliked', 'OK', 'Liked', 'Liked'])
+  })
+
+  it('puts journal wines and rated cellar bottles together', () => {
+    const opened = bottle({ id: 'b', openings: [{ date: '2026-01-01', stars: 5, note: '' }] })
+    const tried = { id: 't', date: '2026-02-01', wine: 'X', type: 'White', region: 'Dão', stars: 2, tags: [], note: '' } as const
+    const rated = ratedWines([opened], [{ ...tried, tags: [] }])
+    expect(rated.map((r) => [r.key, r.rating])).toEqual([
+      ['t', 'Disliked'],
+      ['b:2026-01-01', 'Liked'],
+    ])
   })
 })
 

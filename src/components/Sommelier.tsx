@@ -4,7 +4,7 @@ import { ArrowUpRight, Camera, Loader2, X } from 'lucide-react'
 import { aiEnabled, resizeToDataUrl } from '../lib/ai'
 import { askSommelier } from '../lib/sommelier'
 import type { Advice, Place } from '../lib/sommelier'
-import type { Bottle, Profile } from '../types'
+import type { Bottle, Profile, Tasting } from '../types'
 import { Button, Field, SectionTitle, cn } from './ui'
 
 const PLACES: { id: Place; label: string; hint: string }[] = [
@@ -20,12 +20,17 @@ interface Props {
   bottles: Bottle[]
   // Every bottle the person can see, for the ratings behind their taste.
   rated: Bottle[]
+  journal: Tasting[]
   profile: Profile
+  // A link shared to the app from another app, such as the menu page a QR code opened.
+  sharedLink?: string
   onSelect: (bottle: Bottle) => void
 }
 
-export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
-  const [place, setPlace] = useState<Place>('home')
+export function Sommelier({ bottles, rated, journal, profile, sharedLink, onSelect }: Props) {
+  const [place, setPlace] = useState<Place>(sharedLink ? 'restaurant' : 'home')
+  const [link, setLink] = useState(sharedLink ?? '')
+  const [listText, setListText] = useState('')
   const [food, setFood] = useState('')
   const [occasion, setOccasion] = useState('')
   const [budget, setBudget] = useState('')
@@ -53,7 +58,7 @@ export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
     setError(null)
     setAdvice(null)
     try {
-      setAdvice(await askSommelier({ place, food, occasion, budget, photos }, bottles, rated, profile))
+      setAdvice(await askSommelier({ place, food, occasion, budget, photos, link, listText }, bottles, rated, journal, profile))
     } catch (err) {
       setError(`The sommelier could not answer. ${err instanceof Error ? err.message : ''}`)
     } finally {
@@ -61,7 +66,10 @@ export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
     }
   }
 
-  const missing = place === 'restaurant' ? photos.length === 0 : place === 'home' && !bottles.some((b) => b.quantity > 0)
+  const missing =
+    place === 'restaurant'
+      ? photos.length === 0 && !link.trim() && !listText.trim()
+      : place === 'home' && !bottles.some((b) => b.quantity > 0)
 
   return (
     <section aria-labelledby="sommelier" className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -101,8 +109,30 @@ export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
         </div>
 
         {place === 'restaurant' && (
-          <div className="flex flex-col gap-3">
-            <SectionTitle>Wine list photos</SectionTitle>
+          <div className="flex flex-col gap-4">
+            <SectionTitle>The wine list</SectionTitle>
+            <Field
+              label="Link to the menu"
+              type="url"
+              placeholder="Paste the address the QR code opened"
+              value={link}
+              onChange={setLink}
+            />
+            <p className="text-xs text-muted-foreground">
+              Scan the QR code with the camera, open the menu, copy its address and paste it here. On Android you can also
+              use Share and pick Cave Sobri. Reading a link uses two AI requests instead of one.
+            </p>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Or paste the list</span>
+              <textarea
+                rows={3}
+                value={listText}
+                onChange={(e) => setListText(e.target.value)}
+                placeholder="Select the wine section of the menu page, copy, and paste it here"
+                className="border border-input bg-transparent p-3 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:border-primary"
+              />
+            </label>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Or photograph it</span>
             <div className="grid grid-cols-3 gap-3">
               {photos.map((src, i) => (
                 <div key={src.slice(-24)} className="relative aspect-[3/4] overflow-hidden border bg-muted">
@@ -188,7 +218,7 @@ export function Sommelier({ bottles, rated, profile, onSelect }: Props) {
           <p className="border-l-2 border-primary bg-muted/70 p-3 text-sm">
             <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Based on your taste</span>
             <br />
-            {advice.basedOn || 'Nothing personal yet, so this is general advice. Rate some wines in Palate to change that.'}
+            {advice.basedOn || 'Nothing personal yet, so this is general advice. Rate some wines in your Journal to change that.'}
           </p>
           {advice.caution && <p className="border border-dashed p-3 text-sm text-muted-foreground">{advice.caution}</p>}
           <p className="text-xs text-muted-foreground">Advice from an AI model. It can be wrong, so trust your own taste.</p>

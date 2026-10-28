@@ -1,6 +1,6 @@
 import { Schema } from 'firebase/ai'
-import type { Bottle, Profile } from '../types'
-import { generateJson } from './ai'
+import type { Bottle, Profile, Tasting } from '../types'
+import { generateJson, readWineListAt } from './ai'
 import { tasteText } from './taste'
 import { drinkingWindow } from './windows'
 
@@ -15,8 +15,10 @@ export interface Question {
   occasion: string
   // Euros per bottle. Only asked when buying or ordering.
   budget: string
-  // Photos of the wine list, at a restaurant.
+  // At a restaurant, the wine list as photos, as a link (often behind a QR code), or pasted as text.
   photos: string[]
+  link: string
+  listText: string
 }
 
 export interface Advice {
@@ -53,7 +55,7 @@ const schema = Schema.object({
 const SYSTEM = `You are a private sommelier for one person's cellar of Portuguese wine. Be direct and practical.
 Rules:
 - At home, recommend only bottles from the cellar list, by their id. Prefer bottles marked "At peak" or "Drink soon". Do not recommend a bottle marked "Wait" unless nothing else fits, and say so. If nothing in the cellar suits the meal, say so plainly and name a style worth buying.
-- At a restaurant, recommend only wines you can actually read on the photographed list. Leave out anything unreadable; never guess a wine. Weigh the price against what the wine normally costs in a shop in Portugal.
+- At a restaurant, recommend only wines you can actually read on the wine list given, in the photos or the text. Leave out anything unreadable; never guess a wine. Weigh the price against what the wine normally costs in a shop in Portugal.
 - When buying, suggest styles, regions and grapes with one or two example producers. You do not know today's prices or promotions: say so in the caution.
 - Fit the person's taste: their own words are firm rules, and their liked and disliked wines and tags show what to favour and avoid. Say in basedOn exactly what you used. If there is little or nothing, leave basedOn empty and give sound general advice.
 - Portuguese wines first.
@@ -87,10 +89,18 @@ function cellarLines(bottles: Bottle[]): string {
 }
 
 // `bottles` is what can be opened now; `rated` is every bottle the person can see, for their taste.
-export function askSommelier(q: Question, bottles: Bottle[], rated: Bottle[], profile: Profile): Promise<Advice> {
+export async function askSommelier(
+  q: Question,
+  bottles: Bottle[],
+  rated: Bottle[],
+  journal: Tasting[],
+  profile: Profile,
+): Promise<Advice> {
+  const fromLink = q.place === 'restaurant' && q.link.trim() ? await readWineListAt(q.link.trim()) : ''
+  const list = [q.listText.trim(), fromLink].filter(Boolean).join('\n\n')
   const where = {
     home: 'I am at home and want to open a bottle from my cellar.',
-    restaurant: 'I am at a restaurant. The photos show the wine list.',
+    restaurant: 'I am at a restaurant. The wine list is in the photos and/or the text below.',
     shop: 'I want to buy a bottle.',
   }[q.place]
 
@@ -101,7 +111,8 @@ export function askSommelier(q: Question, bottles: Bottle[], rated: Bottle[], pr
     `Occasion: ${q.occasion || 'nothing special'}.`,
     q.place !== 'home' && q.budget ? `Budget: up to €${q.budget} a bottle.` : '',
     q.place !== 'restaurant' ? `My cellar (id | wine | type | region | grapes | drinking status | bottles | price):\n${cellarLines(bottles) || 'Empty.'}` : '',
-    `My taste.\n${tasteText(rated, profile)}`,
+    q.place === 'restaurant' && list ? `The wine list:\n${list}` : '',
+    `My taste.\n${tasteText(rated, journal, profile)}`,
   ]
     .filter(Boolean)
     .join('\n\n')

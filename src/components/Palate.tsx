@@ -1,66 +1,27 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { X } from 'lucide-react'
 import { samplePalate } from '../lib/showcase'
-import { newId } from '../lib/store'
 import { palate } from '../lib/structure'
 import { ratedWines } from '../lib/taste'
-import { RATINGS, REGIONS, TASTE_TAGS, WINE_TYPES } from '../types'
-import type { Bottle, Profile, Rating, Tasting } from '../types'
+import type { Bottle, Profile, Tasting } from '../types'
 import { PalateGraph } from './PalateGraph'
-import { Button, Field, SectionTitle, SelectField, cn } from './ui'
+import { Button, SectionTitle } from './ui'
 
 interface Props {
   profile: Profile
   bottles: Bottle[]
+  journal: Tasting[]
   onSave: (profile: Profile) => void
+  onOpenJournal: () => void
 }
 
 const strength = (n: number) =>
   n === 0 ? 'Nothing to go on yet' : n < 5 ? 'A first sketch' : n < 15 ? 'Taking shape' : 'A solid picture'
 
-export function TagPicker({ value, onChange }: { value: string[]; onChange: (tags: string[]) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {TASTE_TAGS.map((tag) => {
-        const on = value.includes(tag)
-        return (
-          <button
-            key={tag}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onChange(on ? value.filter((t) => t !== tag) : [...value, tag])}
-            className={cn(
-              'h-8 rounded-md border px-2.5 text-xs transition-colors',
-              on ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground/40',
-            )}
-          >
-            {tag}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-const BLANK = { wine: '', type: 'Red', region: 'Douro', rating: 'Liked', tags: [], note: '' } satisfies Partial<Tasting>
-
-export function Palate({ profile, bottles, onSave }: Props) {
+export function Palate({ profile, bottles, journal, onSave, onOpenJournal }: Props) {
   const [about, setAbout] = useState(profile.about)
-  const [draft, setDraft] = useState<Omit<Tasting, 'id' | 'date'>>(BLANK)
-  const rated = ratedWines(bottles, profile)
   const [example, setExample] = useState(false)
+  const rated = ratedWines(bottles, journal)
   const mine = palate(rated)
-
-  const add = (e: FormEvent) => {
-    e.preventDefault()
-    onSave({
-      ...profile,
-      about,
-      tastings: [{ ...draft, id: newId(), date: new Date().toISOString() }, ...profile.tastings],
-    })
-    setDraft(BLANK)
-  }
 
   return (
     <section aria-labelledby="palate" className="mx-auto flex w-full max-w-2xl flex-col gap-10">
@@ -69,7 +30,7 @@ export function Palate({ profile, bottles, onSave }: Props) {
           Your palate
         </h2>
         <p className="text-sm text-muted-foreground">
-          What the sommelier knows about your taste. It is yours alone, even when a cellar is shared.
+          What the sommelier knows about your taste, from your journal and the bottles you opened. It is yours alone.
         </p>
       </div>
 
@@ -87,11 +48,7 @@ export function Palate({ profile, bottles, onSave }: Props) {
       <div className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between gap-4">
           <SectionTitle>{example ? "Example: João's palate" : 'Your palate graph'}</SectionTitle>
-          <button
-            type="button"
-            onClick={() => setExample(!example)}
-            className="text-xs text-primary underline underline-offset-4"
-          >
+          <button type="button" onClick={() => setExample(!example)} className="text-xs text-primary underline underline-offset-4">
             {example ? 'Back to mine' : 'See an example'}
           </button>
         </div>
@@ -107,15 +64,18 @@ export function Palate({ profile, bottles, onSave }: Props) {
           <>
             <PalateGraph shape={mine} />
             <p className="text-center text-xs text-muted-foreground">
-              The average build of the wines you rated. A wine read from its label uses its own values; any other uses an
-              estimate for its type and region.
+              Wines of 4 or 5 stars count as liked, 1 or 2 as disliked. A wine read from its label uses its own values; any
+              other uses an estimate for its type and region.
             </p>
           </>
         ) : (
           <p className="border-l-2 border-primary bg-muted/70 p-4 text-sm text-muted-foreground">
-            The graph appears once you have rated a wine as liked or disliked. See an example to know what to expect.
+            The graph appears once you have rated a wine. See an example to know what to expect.
           </p>
         )}
+        <Button variant="outline" className="self-center" onClick={onOpenJournal}>
+          Rate wines in your journal
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -130,72 +90,6 @@ export function Palate({ profile, bottles, onSave }: Props) {
         />
         <p className="text-xs text-muted-foreground">Saved when you leave the box. The sommelier treats firm rules here as firm.</p>
       </div>
-
-      <form onSubmit={add} className="flex flex-col gap-4">
-        <SectionTitle>Wines you know</SectionTitle>
-        <p className="text-sm text-muted-foreground">
-          Wines you have tried anywhere, not only bottles you own. A few you loved and a few you did not teach it the most.
-        </p>
-        <Field
-          label="Wine"
-          placeholder="Producer, wine and year if you remember"
-          value={draft.wine}
-          onChange={(wine) => setDraft({ ...draft, wine })}
-          required
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Type" value={draft.type} options={WINE_TYPES} onChange={(type) => setDraft({ ...draft, type })} />
-          <SelectField label="Region" value={draft.region} options={REGIONS} onChange={(region) => setDraft({ ...draft, region })} />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {RATINGS.map((r: Rating) => (
-            <Button
-              key={r}
-              variant="outline"
-              className={cn(draft.rating === r && 'border-primary bg-accent')}
-              onClick={() => setDraft({ ...draft, rating: r })}
-            >
-              {r}
-            </Button>
-          ))}
-        </div>
-        <TagPicker value={draft.tags} onChange={(tags) => setDraft({ ...draft, tags })} />
-        <Field label="Why, in a few words" value={draft.note} onChange={(note) => setDraft({ ...draft, note })} />
-        <Button type="submit" className="h-11 tracking-wide">
-          Add to my palate
-        </Button>
-      </form>
-
-      {rated.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <SectionTitle>What it is based on</SectionTitle>
-          <ul className="flex flex-col divide-y border-y text-sm">
-            {rated.map((r) => (
-              <li key={r.key} className="flex items-start justify-between gap-3 py-3">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="font-serif text-lg leading-tight">{r.wine}</span>
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {[r.rating, r.type, r.region, r.fromCellar ? 'From your cellar' : ''].filter(Boolean).join(' · ')}
-                  </span>
-                  {(r.tags.length > 0 || r.note) && (
-                    <span className="text-muted-foreground">{[...r.tags, r.note].filter(Boolean).join(' · ')}</span>
-                  )}
-                </div>
-                {!r.fromCellar && (
-                  <button
-                    type="button"
-                    onClick={() => onSave({ ...profile, tastings: profile.tastings.filter((t) => t.id !== r.key) })}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-                  >
-                    <X className="size-3.5" aria-hidden="true" />
-                    <span className="sr-only">Remove</span>
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </section>
   )
 }

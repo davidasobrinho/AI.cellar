@@ -5,7 +5,6 @@ import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
 import { BottleForm } from './components/BottleForm'
 import { Journal } from './components/Journal'
-import { Palate } from './components/Palate'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
 import { Button, Field, SectionTitle, Sheet, SheetHeader, cn } from './components/ui'
@@ -97,12 +96,11 @@ function Account({ email }: { email: string }) {
   )
 }
 
-type View = 'cellar' | 'journal' | 'sommelier' | 'palate'
+type View = 'cellar' | 'journal' | 'sommelier'
 const VIEWS: { id: View; label: string }[] = [
   { id: 'cellar', label: 'Cellar' },
   { id: 'journal', label: 'Journal' },
   { id: 'sommelier', label: 'Sommelier' },
-  { id: 'palate', label: 'Palate' },
 ]
 
 type Layout = 'list' | 'timeline'
@@ -308,12 +306,14 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
             bottles={myBottles}
             friendJournals={store.friendJournals}
             canShare={firebaseEnabled}
+            profile={profile}
             onSave={store.saveJournal}
+            onSaveProfile={store.saveProfile}
             onSelectBottle={(id) => setPanel({ kind: 'detail', id })}
           />
         )}
 
-        {/* Sommelier and Palate draw on the person's own cellars, not on cellars friends share to look at. */}
+        {/* The sommelier draws on the person's own cellars, not on cellars friends share to look at. */}
         {view === 'sommelier' && (
           <Sommelier
             bottles={myBottles}
@@ -322,16 +322,6 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
             profile={profile}
             sharedLink={SHARED_LINK}
             onSelect={select}
-          />
-        )}
-
-        {view === 'palate' && (
-          <Palate
-            profile={profile}
-            bottles={myBottles}
-            journal={store.journal.entries}
-            onSave={store.saveProfile}
-            onOpenJournal={() => setView('journal')}
           />
         )}
 

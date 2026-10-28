@@ -7,7 +7,8 @@ import type { FriendJournal } from '../lib/store'
 import { newId } from '../lib/store'
 import { ratedWines, starsOf } from '../lib/taste'
 import { REGIONS, TASTE_TAGS, WINE_TYPES } from '../types'
-import type { Bottle, Journal as JournalData, Tasting } from '../types'
+import type { Bottle, Journal as JournalData, Profile, Tasting } from '../types'
+import { PalateSummary } from './Palate'
 import { Button, Field, SectionTitle, SelectField, Sheet, SheetHeader, cn } from './ui'
 
 export function Stars({ value, onChange, size = 'md' }: { value: number | null; onChange?: (stars: number) => void; size?: 'sm' | 'md' }) {
@@ -106,17 +107,14 @@ function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry:
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!draft.stars) {
-      setError('Give it a rating first.')
-      return
-    }
-    onSave({ ...draft, rating: null })
+    // Without a rating it is a wine to remember, so it goes on the list to buy.
+    onSave({ ...draft, rating: null, wantToBuy: draft.stars ? draft.wantToBuy : true })
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col">
-      <SheetHeader eyebrow="Diário" title={entry ? 'Edit wine' : 'A wine I drank'}>
-        For wines anywhere: a restaurant, a friend's table, a tasting. It does not go in a cellar.
+      <SheetHeader eyebrow="Diário" title={entry ? 'Edit wine' : 'A wine to remember'}>
+        From anywhere: a restaurant, a shop shelf, a friend's table. Rate it now, or save it for later and rate it when you drink it.
       </SheetHeader>
 
       <section className="flex flex-col gap-4 border-b p-6">
@@ -139,7 +137,7 @@ function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry:
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">
-        <SectionTitle>Your rating</SectionTitle>
+        <SectionTitle>Your rating, if you have tasted it</SectionTitle>
         <Stars value={draft.stars ?? null} onChange={(n) => set('stars', n)} />
         <TagPicker value={draft.tags} onChange={(tags) => set('tags', tags)} />
         <Field label="What you thought" value={draft.note} onChange={(v) => set('note', v)} />
@@ -165,7 +163,7 @@ function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry:
           </p>
         )}
         <Button type="submit" className="mt-2 h-11 tracking-wide">
-          {entry ? 'Save changes' : 'Add to my journal'}
+          {entry ? 'Save changes' : draft.stars ? 'Add to my journal' : 'Save for later'}
         </Button>
       </section>
     </form>
@@ -174,20 +172,65 @@ function JournalForm({ entry, onSave }: { entry: Tasting | null; onSave: (entry:
 
 type Filter = 'all' | 'buy' | 'friends'
 
+// One line of the journal: a wine from it, rated or saved for later, or a bottle opened from a cellar.
+interface Row {
+  key: string
+  date: string
+  wine: string
+  stars: number | null
+  details: string
+  why: string
+  wantToBuy: boolean
+  entry: Tasting | null
+  bottleId: string | null
+}
+
 interface Props {
   journal: JournalData
   bottles: Bottle[]
   friendJournals: FriendJournal[]
   canShare: boolean
+  profile: Profile
   onSave: (journal: JournalData) => void
+  onSaveProfile: (profile: Profile) => void
   onSelectBottle: (bottleId: string) => void
 }
 
-export function Journal({ journal, bottles, friendJournals, canShare, onSave, onSelectBottle }: Props) {
+export function Journal({ journal, bottles, friendJournals, canShare, profile, onSave, onSaveProfile, onSelectBottle }: Props) {
   const [editing, setEditing] = useState<Tasting | 'new' | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  const mine = ratedWines(bottles, journal.entries)
-  const shown = filter === 'buy' ? mine.filter((r) => r.wantToBuy) : mine
+  const rated = ratedWines(bottles, journal.entries)
+
+  const rows: Row[] = [
+    ...rated.map((r) => {
+      const entry = journal.entries.find((t) => t.id === r.key) ?? null
+      return {
+        key: r.key,
+        date: r.date,
+        wine: r.wine,
+        stars: r.stars,
+        details: [r.type, r.region, entry?.place, new Date(r.date).toLocaleDateString('en-GB')].filter(Boolean).join(' · '),
+        why: [...r.tags, r.note].filter(Boolean).join(' · '),
+        wantToBuy: r.wantToBuy,
+        entry,
+        bottleId: r.bottleId,
+      }
+    }),
+    ...journal.entries
+      .filter((t) => starsOf(t) === null)
+      .map((t) => ({
+        key: t.id,
+        date: t.date,
+        wine: [t.wine, t.vintage].filter(Boolean).join(' '),
+        stars: null,
+        details: [t.type, t.region, t.place, t.price ? `€${t.price}` : ''].filter(Boolean).join(' · '),
+        why: t.note,
+        wantToBuy: true,
+        entry: t,
+        bottleId: null,
+      })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
+  const shown = filter === 'buy' ? rows.filter((r) => r.wantToBuy) : rows
 
   const save = (entry: Tasting) => {
     const exists = journal.entries.some((t) => t.id === entry.id)
@@ -206,18 +249,22 @@ export function Journal({ journal, bottles, friendJournals, canShare, onSave, on
           Your journal
         </h2>
         <p className="text-sm text-muted-foreground">
-          Every wine you drink, at home or out. Rate it, remember it, mark the ones to buy. It all feeds your palate.
+          Snap a wine, save it for later, rate it when you drink it. Every rating shapes your palate and the sommelier's
+          advice.
         </p>
         <Button className="h-11 px-6" onClick={() => setEditing('new')}>
-          Add a wine I drank
+          <Camera aria-hidden="true" />
+          Snap or add a wine
         </Button>
       </div>
 
-      <div className="flex justify-center gap-2" role="group" aria-label="Show">
+      <PalateSummary rated={rated} profile={profile} onSave={onSaveProfile} />
+
+      <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Show">
         {(
           [
-            ['all', `Mine (${mine.length})`],
-            ['buy', `To buy (${mine.filter((r) => r.wantToBuy).length})`],
+            ['all', `All (${rows.length})`],
+            ['buy', `To buy (${rows.filter((r) => r.wantToBuy).length})`],
             ...(canShare ? [['friends', `Friends (${friendJournals.length})`]] : []),
           ] as [Filter, string][]
         ).map(([id, label]) => (
@@ -240,59 +287,63 @@ export function Journal({ journal, bottles, friendJournals, canShare, onSave, on
         <ul className="flex flex-col divide-y border-y">
           {shown.length === 0 && (
             <li className="py-12 text-center text-sm text-muted-foreground">
-              {filter === 'buy' ? 'Nothing marked to buy yet.' : 'No wines yet. Add the last one you enjoyed.'}
+              {filter === 'buy' ? 'Nothing saved to buy yet.' : 'No wines yet. Snap the next one you enjoy.'}
             </li>
           )}
-          {shown.map((r) => {
-            const entry = journal.entries.find((t) => t.id === r.key)
-            return (
-              <li key={r.key} className="flex items-start justify-between gap-3 py-4">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="font-serif text-xl leading-tight">{r.wine}</span>
-                  <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                    <Stars value={r.stars} size="sm" />
-                    {[r.type, r.region, entry?.place, new Date(r.date).toLocaleDateString('en-GB')].filter(Boolean).join(' · ')}
-                  </span>
-                  {(r.tags.length > 0 || r.note) && (
-                    <span className="text-sm text-muted-foreground">{[...r.tags, r.note].filter(Boolean).join(' · ')}</span>
-                  )}
-                  {r.wantToBuy && <span className="text-xs text-primary">To buy</span>}
-                </div>
-                {entry ? (
-                  <div className="flex shrink-0">
-                    <IconButton label="Edit" onClick={() => setEditing(entry)}>
-                      <Pencil className="size-3.5" aria-hidden="true" />
-                    </IconButton>
-                    <IconButton
-                      label="Remove"
-                      onClick={() =>
-                        window.confirm(`Remove ${r.wine} from your journal?`) &&
-                        onSave({ ...journal, entries: journal.entries.filter((t) => t.id !== entry.id) })
-                      }
+          {shown.map((r) => (
+            <li key={r.key} className="flex items-start justify-between gap-3 py-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="font-serif text-xl leading-tight">{r.wine}</span>
+                <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                  {r.stars !== null ? <Stars value={r.stars} size="sm" /> : <span className="text-primary">Not tasted yet</span>}
+                  {r.details}
+                </span>
+                {r.why && <span className="text-sm text-muted-foreground">{r.why}</span>}
+                {r.wantToBuy && <span className="text-xs text-primary">To buy</span>}
+              </div>
+              {r.entry ? (
+                <div className="flex shrink-0 items-center">
+                  {r.stars === null && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(r.entry)}
+                      className="mr-1 text-xs text-primary underline underline-offset-4"
                     >
-                      <X className="size-3.5" aria-hidden="true" />
-                    </IconButton>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onSelectBottle(r.bottleId!)}
-                    className="shrink-0 text-xs text-primary underline underline-offset-4"
+                      Rate it
+                    </button>
+                  )}
+                  <IconButton label="Edit" onClick={() => setEditing(r.entry)}>
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    label="Remove"
+                    onClick={() =>
+                      window.confirm(`Remove ${r.wine} from your journal?`) &&
+                      onSave({ ...journal, entries: journal.entries.filter((t) => t.id !== r.key) })
+                    }
                   >
-                    From your cellar
-                  </button>
-                )}
-              </li>
-            )
-          })}
+                    <X className="size-3.5" aria-hidden="true" />
+                  </IconButton>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelectBottle(r.bottleId!)}
+                  className="shrink-0 text-xs text-primary underline underline-offset-4"
+                >
+                  From your cellar
+                </button>
+              )}
+            </li>
+          ))}
         </ul>
       )}
 
       {filter === 'friends' && (
         <div className="flex flex-col gap-6">
           <p className="text-sm text-muted-foreground">
-            Friends you add can read your journal, not change it. You see theirs once they add you too. Your palate notes
-            stay private.
+            Friends you add can read your journal, not change it. You see theirs once they add you too. Your palate stays
+            private.
           </p>
           <Button variant="outline" onClick={addFriend} className="self-center">
             Add a friend
@@ -319,7 +370,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, onSave, on
                     <li key={t.id} className="flex flex-col gap-1 py-3">
                       <span className="font-serif text-lg leading-tight">{[t.wine, t.vintage].filter(Boolean).join(' ')}</span>
                       <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                        <Stars value={starsOf(t)} size="sm" />
+                        {starsOf(t) !== null ? <Stars value={starsOf(t)} size="sm" /> : <span>Saved for later</span>}
                         {[t.type, t.region, t.place].filter(Boolean).join(' · ')}
                       </span>
                       {(t.tags.length > 0 || t.note) && (

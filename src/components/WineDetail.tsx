@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Wine as WineIcon } from 'lucide-react'
+import { Pencil, Plus, Trash2, Wine as WineIcon } from 'lucide-react'
 import { BAND_LABELS, euros, priceBand } from '../lib/price'
 import { STATUS_DESCRIPTION, drinkingWindow } from '../lib/windows'
 import type { Bottle, LabelDetails } from '../types'
@@ -125,6 +125,12 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
           {band ? t('{band} sticker', { band: BAND_LABELS[band] }) : t('No price yet, so no sticker')}
         </p>
         {bottle.notes && <p className="border border-dashed p-3 text-sm text-muted-foreground">{bottle.notes}</p>}
+        {!readOnly && (
+          <Button variant="outline" className="self-start" onClick={() => onChange({ ...bottle, quantity: bottle.quantity + 1 })}>
+            <Plus aria-hidden="true" />
+            {t('Add one more bottle')}
+          </Button>
+        )}
       </section>
 
       <section className="flex flex-col gap-4 border-b p-6">

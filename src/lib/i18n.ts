@@ -383,5 +383,16 @@ const PT: Record<string, string> = {
   // Showcase cellar
   "João's 5-star picks": 'Escolhas 5 estrelas do João',
   'Main cellar': 'Garrafeira principal',
+  'Several bottles at once': 'Várias garrafas de uma vez',
+  'Line up a few bottles, labels to the camera, and take one photo. Quicker for a big batch.': 'Alinha algumas garrafas, rótulos para a câmara, e tira uma foto. Mais rápido para muitas.',
+  'Line up 4 to 6 bottles with the front labels facing the camera, in good light. Each photo is one AI request for all of them.': 'Alinha 4 a 6 garrafas com os rótulos virados para a câmara, com boa luz. Cada foto é um só pedido de IA para todas.',
+  'Take a photo': 'Tirar foto',
+  'Another photo': 'Outra foto',
+  'Reading the bottles…': 'A ler as garrafas…',
+  'No label could be read. Try closer, with more light.': 'Não foi possível ler nenhum rótulo. Tenta mais perto, com mais luz.',
+  'Check each wine, untick any mistakes, then add them all.': 'Confirma cada vinho, desmarca os erros e junta todos.',
+  'Add {n} wines to {cellar}': 'Juntar {n} vinhos a {cellar}',
+  'Add one more bottle': 'Mais uma garrafa',
+  'Quick add': 'Adição rápida',
   'The sommelier is not switched on here. It needs the Firebase project.': 'As sugestões não estão ligadas aqui. Precisam do projeto Firebase.',
 }

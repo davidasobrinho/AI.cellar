@@ -1,4 +1,4 @@
-import { GoogleAIBackend, getAI, getGenerativeModel } from 'firebase/ai'
+import { AgentPlatformBackend, GoogleAIBackend, getAI, getGenerativeModel } from 'firebase/ai'
 import type { ModelParams, Schema } from 'firebase/ai'
 import { app, firebaseEnabled } from './firebase'
 import { t } from './i18n'
@@ -6,6 +6,13 @@ import { t } from './i18n'
 // Gemini, called through the Firebase project (AI Logic must be turned on there).
 // App Check, when a site key is set, adds proof that a request comes from this app.
 export const aiEnabled = firebaseEnabled
+
+// Two routes to the same Gemini models. 'google' is the Gemini Developer API (AI Studio):
+// a free daily allowance, or prepaid credit. 'vertex' is Vertex AI, billed to the Google
+// Cloud account, which can use Google Cloud trial credit. It needs the Blaze plan. (The SDK now
+// calls Vertex AI the Agent Platform.)
+const VERTEX = import.meta.env.VITE_AI_PROVIDER === 'vertex'
+const backend = () => (VERTEX ? new AgentPlatformBackend(import.meta.env.VITE_AI_LOCATION || 'global') : new GoogleAIBackend())
 
 // Best model first. The free tier gives each model its own small daily allowance,
 // so when one is used up for the day the next one takes over.
@@ -30,7 +37,7 @@ async function ask(settings: Settings, prompt: string, photos: string[] = []): P
   ]
   let busy = false
   for (const name of MODELS.filter((m) => !usedUp.has(m))) {
-    const model = getGenerativeModel(getAI(app!, { backend: new GoogleAIBackend() }), { ...settings, model: name })
+    const model = getGenerativeModel(getAI(app!, { backend: backend() }), { ...settings, model: name })
     try {
       // The App Check step can wait forever when the browser check does not complete.
       const result = await Promise.race([

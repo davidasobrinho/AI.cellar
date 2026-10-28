@@ -17,8 +17,8 @@ const text = (description: string) => Schema.string({ description })
 const year = (description: string) => Schema.integer({ description })
 const scale = (description: string) => Schema.integer({ description: `${description}. Your estimate for this wine` })
 
-const schema = Schema.object({
-  properties: {
+// What can be read or estimated for any wine, from its front label alone.
+const wineFields = {
     producer: text('Producer or estate, as printed'),
     name: text('Wine name as printed, without producer or vintage'),
     vintage: year('Harvest year. 0 when the label shows none'),
@@ -42,6 +42,11 @@ const schema = Schema.object({
     acidity: scale('Acidity, from 1 round to 5 very fresh'),
     oak: scale('Oak, from 1 none to 5 marked'),
     fruit: scale('Fruit, from 1 lean and savoury to 5 ripe and fruit-forward'),
+}
+
+const schema = Schema.object({
+  properties: {
+    ...wineFields,
     designation: text('For example DOC Douro or Vinho Regional Alentejano. Empty if not printed'),
     classification: text('For example Reserva or Grande Reserva. Empty if none'),
     subRegion: text('Sub-region or vineyard. Empty if none'),
@@ -62,14 +67,10 @@ Transcribe what is printed exactly. Never invent a producer or a wine name: if t
 For what is not printed (drinking window, serving temperature, decanting, closure), give your best expert estimate for this specific wine and vintage, assuming good storage.
 The current year is ${new Date().getFullYear()}.`
 
-export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shaped by the schema above
-  const r = await generateJson<any>(
-    SYSTEM,
-    schema,
-    'Read these wine label photos (front and/or back) and fill in the cellar record.',
-    photos,
-  )
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- shaped by the schemas above
+type Read = any
+
+function toBottle(r: Read): Omit<ScannedBottle, 'label'> {
   const hasWindow = r.drinkFrom > 0 && r.peakFrom >= r.drinkFrom && r.peakTo >= r.peakFrom && r.drinkUntil >= r.peakTo
 
   return {
@@ -95,6 +96,18 @@ export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
     window: hasWindow
       ? { drinkFrom: r.drinkFrom, peakFrom: r.peakFrom, peakTo: r.peakTo, drinkUntil: r.drinkUntil }
       : null,
+  }
+}
+
+export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
+  const r: Read = await generateJson(
+    SYSTEM,
+    schema,
+    'Read these wine label photos (front and/or back) and fill in the cellar record.',
+    photos,
+  )
+  return {
+    ...toBottle(r),
     label: {
       designation: r.designation,
       classification: r.classification,
@@ -110,4 +123,33 @@ export async function scanLabel(photos: string[]): Promise<ScannedBottle> {
       backLabel: r.backLabel,
     },
   }
+}
+
+const shelfSchema = Schema.object({
+  properties: {
+    wines: Schema.array({
+      description: 'Every different wine whose label can be read, left to right. Leave out any you cannot read',
+      items: Schema.object({
+        properties: {
+          ...wineFields,
+          count: Schema.integer({ description: 'How many bottles of this same wine and vintage are in the photo' }),
+        },
+      }),
+    }),
+  },
+})
+
+export interface ShelfWine extends Omit<ScannedBottle, 'label'> {
+  count: number
+}
+
+// Reads a photo of several bottles standing side by side: one AI request for all of them.
+export async function scanShelf(photo: string): Promise<ShelfWine[]> {
+  const r: { wines: Read[] } = await generateJson(
+    SYSTEM,
+    shelfSchema,
+    'This photo shows several wine bottles with their front labels facing the camera. List each different wine you can read.',
+    [photo],
+  )
+  return r.wines.filter((w) => w.name || w.producer).map((w) => ({ ...toBottle(w), count: Math.max(1, w.count || 1) }))
 }

@@ -3,12 +3,14 @@ import type { ComponentProps, FormEvent, ReactNode } from 'react'
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { Plus } from 'lucide-react'
+import { BatchAdd } from './components/BatchAdd'
 import { BottleForm } from './components/BottleForm'
 import { Journal, JournalForm } from './components/Journal'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
 import { Button, Field, SectionTitle, Sheet, SheetHeader, cn } from './components/ui'
 import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
+import { aiEnabled } from './lib/ai'
 import { auth, firebaseEnabled } from './lib/firebase'
 import { SHOWCASE_CELLAR, showcaseBottles } from './lib/showcase'
 import { useFirebaseStore, useLocalStore } from './lib/store'
@@ -115,13 +117,17 @@ type Panel =
   | { kind: 'detail'; id: string }
   | { kind: 'form'; bottle: Bottle | null }
   | { kind: 'tasting' }
+  | { kind: 'batch' }
   | { kind: 'share'; cellarId: string }
   | null
 
 // The one way to add a wine: it either goes in a cellar or in the journal.
-function AddChooser({ onCellar, onJournal }: { onCellar: () => void; onJournal: () => void }) {
+function AddChooser({ onCellar, onBatch, onJournal }: { onCellar: () => void; onBatch?: () => void; onJournal: () => void }) {
   const options = [
     { label: t('I have this bottle'), hint: t('Add it to a cellar, to track it and know when to drink it.'), go: onCellar },
+    ...(onBatch
+      ? [{ label: t('Several bottles at once'), hint: t('Line up a few bottles, labels to the camera, and take one photo. Quicker for a big batch.'), go: onBatch }]
+      : []),
     { label: t('I drank it, or want to'), hint: t('Rate it, or save it for later. It goes in your journal and shapes your palate.'), go: onJournal },
   ]
   return (
@@ -497,7 +503,24 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
         )}
         {sharing && <ShareForm cellar={sharing} account={account} store={store} />}
         {panel?.kind === 'add' && (
-          <AddChooser onCellar={() => setPanel({ kind: 'form', bottle: null })} onJournal={() => setPanel({ kind: 'tasting' })} />
+          <AddChooser
+            onCellar={() => setPanel({ kind: 'form', bottle: null })}
+            onBatch={aiEnabled ? () => setPanel({ kind: 'batch' }) : undefined}
+            onJournal={() => setPanel({ kind: 'tasting' })}
+          />
+        )}
+        {panel?.kind === 'batch' && (
+          <BatchAdd
+            cellars={editableCellars}
+            defaultCellarId={shown.find((id) => store.canEdit(id)) ?? editableCellars[0].id}
+            onAdd={(bottles, cellarId) => {
+              bottles.forEach(store.putBottle)
+              setChosen([cellarId])
+              setStatus(null)
+              setPanel(null)
+              setView('cellar')
+            }}
+          />
         )}
         {panel?.kind === 'tasting' && (
           <JournalForm

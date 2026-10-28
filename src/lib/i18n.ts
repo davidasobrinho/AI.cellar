@@ -45,7 +45,7 @@ const PT: Record<string, string> = {
   // Menu and frame
   Cellar: 'Garrafeira',
   Journal: 'Diário',
-  Sommelier: 'Escanção',
+  Sommelier: 'O meu palato',
   'Add a wine': 'Adicionar vinho',
   'Change the name at the top': 'Mudar o nome no topo',
   'Sealed with Portuguese cork · Porto': 'Selado com cortiça portuguesa · Porto',
@@ -235,7 +235,7 @@ const PT: Record<string, string> = {
   // Journal
   'Your journal': 'O teu diário',
   'Wines you drank or want to try. Add one with the + at the top: snap it, rate it now or save it for later. Every rating shapes your palate and the sommelier\'s advice.':
-    'Vinhos que bebeste ou queres provar. Junta um com o + no topo: fotografa, avalia já ou guarda para depois. Cada avaliação molda o teu palato e os conselhos do escanção.',
+    'Vinhos que bebeste ou queres provar. Junta um com o + no topo: fotografa, avalia já ou guarda para depois. Cada avaliação molda o teu palato e as sugestões que recebes.',
   'All ({n})': 'Todos ({n})',
   'To buy ({n})': 'Para comprar ({n})',
   'Friends ({n})': 'Amigos ({n})',
@@ -307,7 +307,7 @@ const PT: Record<string, string> = {
   'I like fresh, elegant reds. Not much oak. No sweet wines. Rarely above €30 a bottle.':
     'Gosto de tintos frescos e elegantes. Pouca madeira. Nada de vinhos doces. Raramente acima de 30 € a garrafa.',
   'Saved when you leave the box. Private, even from friends. The sommelier treats firm rules here as firm.':
-    'Guardado quando sais da caixa. Privado, mesmo para amigos. O escanção respeita as regras que aqui puseres.',
+    'Guardado quando sais da caixa. Privado, mesmo para amigos. As sugestões respeitam as regras que aqui puseres.',
   Liked: 'Apreciados',
   Disliked: 'Não apreciados',
   Body: 'Corpo',
@@ -334,7 +334,7 @@ const PT: Record<string, string> = {
   '{n} out of 5': '{n} de 5',
 
   // Sommelier
-  'Your sommelier': 'O teu escanção',
+  'Your sommelier': 'O meu palato',
   'What to open, what to order, what to buy. For this meal and this moment.':
     'O que abrir, o que pedir, o que comprar. Para esta refeição e este momento.',
   'At home': 'Em casa',
@@ -363,8 +363,8 @@ const PT: Record<string, string> = {
     'A data, a hora do dia e a estação contam. E o teu palato também.',
   ' Your cellar is empty, so there is nothing to pick from yet.': ' A tua garrafeira está vazia, por isso ainda não há nada para escolher.',
   'Thinking…': 'A pensar…',
-  'Ask the sommelier': 'Perguntar ao escanção',
-  'The sommelier could not answer. {why}': 'O escanção não conseguiu responder. {why}',
+  'Ask the sommelier': 'Pedir sugestão',
+  'The sommelier could not answer. {why}': 'Não foi possível obter uma sugestão. {why}',
   'Top pick': 'Escolha principal',
   Alternative: 'Alternativa',
   'Open its sheet': 'Abrir a ficha',
@@ -383,5 +383,5 @@ const PT: Record<string, string> = {
   // Showcase cellar
   "João's 5-star picks": 'Escolhas 5 estrelas do João',
   'Main cellar': 'Garrafeira principal',
-  'The sommelier is not switched on here. It needs the Firebase project.': 'O escanção não está ligado aqui. Precisa do projeto Firebase.',
+  'The sommelier is not switched on here. It needs the Firebase project.': 'As sugestões não estão ligadas aqui. Precisam do projeto Firebase.',
 }

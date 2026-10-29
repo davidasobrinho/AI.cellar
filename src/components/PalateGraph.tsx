@@ -78,7 +78,7 @@ export function PalateGraph({ shape }: { shape: PalateShape }) {
           </span>
         </div>
         {words.length > 0 && (
-          <ul className="flex flex-col gap-1 font-serif text-lg font-light leading-snug">
+          <ul className="flex flex-col gap-1 text-base leading-snug">
             {words.map((line) => (
               <li key={line}>{line}</li>
             ))}

@@ -138,7 +138,7 @@ export function DontMiss({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
   return (
     <section aria-labelledby="dont-miss" className="flex flex-col gap-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="dont-miss" className="font-serif text-3xl font-light">
+        <h2 id="dont-miss" className="sb-title text-xl">
           {t("Don't miss these")}
         </h2>
         <p className="text-xs uppercase tracking-widest text-muted-foreground">{t('Closing windows first')}</p>
@@ -162,7 +162,7 @@ export function DontMiss({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs uppercase tracking-wider text-muted-foreground">{b.producer}</span>
-                  <span className="font-serif text-xl font-normal leading-snug text-pretty">{title(b)}</span>
+                  <span className="sb-title text-[15px] leading-snug text-pretty">{title(b)}</span>
                 </div>
                 <span className="mt-auto text-sm text-muted-foreground">{w.hint}</span>
               </button>
@@ -205,7 +205,7 @@ export function WineList({ bottles, onSelect }: { bottles: Bottle[]; onSelect: S
               <div className="flex min-w-0 items-center gap-3">
                 <span className={cn('size-2.5 shrink-0', TYPE_DOT(b))} aria-hidden="true" />
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-serif text-lg font-normal">{title(b)}</span>
+                  <span className="truncate sb-title text-[15px]">{title(b)}</span>
                   <span className="truncate text-xs uppercase tracking-wider text-muted-foreground">
                     {[b.producer, t(b.region), t(b.type)].filter(Boolean).join(' · ')}
                   </span>
@@ -304,7 +304,7 @@ export function TimelineView({ bottles, onSelect }: { bottles: Bottle[]; onSelec
                   className="grid w-full grid-cols-[14rem_1fr] items-center gap-6 rounded-md py-2.5 text-left transition-colors hover:bg-accent/60"
                 >
                   <div className="flex min-w-0 flex-col gap-0.5 pl-1">
-                    <span className="truncate font-serif text-base font-normal">{title(b)}</span>
+                    <span className="truncate sb-title text-sm">{title(b)}</span>
                     <StatusBadge status={w.status} />
                   </div>
                   <WindowBar dates={w.dates!} start={START} end={END} showToday={false} className="h-2.5" />

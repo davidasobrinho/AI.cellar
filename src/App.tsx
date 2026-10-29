@@ -8,7 +8,7 @@ import { BottleForm } from './components/BottleForm'
 import { Journal, JournalForm } from './components/Journal'
 import { Sommelier } from './components/Sommelier'
 import { WineDetail } from './components/WineDetail'
-import { Button, Field, SectionTitle, Sheet, SheetHeader, cn } from './components/ui'
+import { Button, Field, SectionTitle, Sheet, SheetHeader, ThemeToggle, cn } from './components/ui'
 import { CellarSummary, DontMiss, TimelineView, WineList } from './components/views'
 import { aiEnabled } from './lib/ai'
 import { auth, firebaseEnabled } from './lib/firebase'
@@ -143,7 +143,7 @@ function AddChooser({ onCellar, onBatch, onJournal }: { onCellar: () => void; on
             onClick={o.go}
             className="flex flex-col gap-1 rounded-md border p-5 text-left transition-colors hover:border-foreground/40 hover:bg-accent"
           >
-            <span className="font-serif text-2xl">{o.label}</span>
+            <span className="text-lg font-medium">{o.label}</span>
             <span className="text-sm text-muted-foreground">{o.hint}</span>
           </button>
         ))}
@@ -302,7 +302,9 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
     <div className="min-h-dvh">
       <header>
         <div className="mx-auto grid h-24 max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-5">
-          <span aria-hidden="true" />
+          <div className="flex justify-start">
+            <ThemeToggle />
+          </div>
           <Brand title={title} />
           <div className="flex justify-end">
             <Button onClick={() => setPanel({ kind: 'add' })}>
@@ -411,7 +413,7 @@ function CellarApp({ store, account }: { store: Store; account?: string }) {
 
         <section aria-labelledby="bottles" className={cn('flex flex-col gap-5 border-t pt-8', !cellarView && 'hidden')}>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 id="bottles" className="font-serif text-3xl font-light">
+            <h2 id="bottles" className="sb-title text-xl">
               {status ? t(status) : t(layout === 'list' ? 'All wines' : 'Drinking timeline')}
             </h2>
             <div className="flex items-center gap-4">

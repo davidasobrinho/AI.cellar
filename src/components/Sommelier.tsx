@@ -75,7 +75,7 @@ export function Sommelier({ bottles, rated, journal, profile, sharedLink, onSele
   return (
     <section aria-labelledby="sommelier" className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h2 id="sommelier" className="font-serif text-4xl font-light">
+        <h2 id="sommelier" className="sb-title text-xl">
           {t('Your sommelier')}
         </h2>
         <p className="text-sm text-muted-foreground">{t('What to open, what to order, what to buy. For this meal and this moment.')}</p>
@@ -103,7 +103,7 @@ export function Sommelier({ bottles, rated, journal, profile, sharedLink, onSele
                 place === p.id ? 'bg-foreground text-background' : 'bg-background hover:bg-accent',
               )}
             >
-              <span className="font-serif text-xl">{p.label}</span>
+              <span className="text-lg font-medium">{p.label}</span>
               <span className={cn('text-xs', place === p.id ? 'text-background/70' : 'text-muted-foreground')}>{p.hint}</span>
             </button>
           ))}
@@ -186,7 +186,7 @@ export function Sommelier({ bottles, rated, journal, profile, sharedLink, onSele
 
       {advice && (
         <div className="flex flex-col gap-5 border-t pt-8">
-          <p className="font-serif text-2xl font-light leading-snug text-pretty">{advice.summary}</p>
+          <p className="text-lg leading-snug text-pretty">{advice.summary}</p>
           <ol className="flex flex-col divide-y border-y">
             {advice.picks.map((pick, i) => {
               const bottle = bottles.find((b) => b.id === pick.bottleId)
@@ -198,7 +198,7 @@ export function Sommelier({ bottles, rated, journal, profile, sharedLink, onSele
                     </span>
                     {pick.price && <span className="text-sm tabular-nums">{pick.price}</span>}
                   </div>
-                  <span className="font-serif text-xl">{pick.wine}</span>
+                  <span className="sb-title text-[15px]">{pick.wine}</span>
                   <p className="text-sm">{pick.why}</p>
                   {pick.serving && <p className="text-xs text-muted-foreground">{pick.serving}</p>}
                   {bottle && (

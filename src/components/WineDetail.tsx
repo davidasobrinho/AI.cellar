@@ -60,7 +60,7 @@ export function WineDetail({ bottle, cellarName, onChange, onEdit, onDelete, rea
         </div>
 
         <div className="border-l-2 border-primary bg-muted/70 p-4">
-          <p className="font-serif text-xl font-normal leading-snug">{w.hint}</p>
+          <p className="text-lg leading-snug">{w.hint}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t(STATUS_DESCRIPTION[w.status])}</p>
         </div>
 
@@ -220,7 +220,7 @@ function LabelSection({ bottle, label }: { bottle: Bottle; label: LabelDetails }
 
       <div className="flex flex-col items-center gap-1 border border-foreground/80 px-4 py-6 text-center outline outline-1 outline-offset-4 outline-border">
         <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">{bottle.producer}</span>
-        <span className="font-serif text-2xl font-light leading-tight text-balance">{bottle.name}</span>
+        <span className="sb-title text-xl leading-tight text-balance">{bottle.name}</span>
         <span className="text-sm tabular-nums">{bottle.vintage}</span>
         <span className="mt-2 text-[11px] uppercase tracking-widest text-primary">
           {[label.designation, label.classification].filter(Boolean).join(' · ')}

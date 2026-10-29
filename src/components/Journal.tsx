@@ -246,7 +246,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
   return (
     <section aria-labelledby="journal" className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 id="journal" className="font-serif text-4xl font-light">
+        <h2 id="journal" className="sb-title text-xl">
           {t('Your journal')}
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -289,7 +289,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
           {shown.map((r) => (
             <li key={r.key} className="flex items-start justify-between gap-3 py-4">
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="font-serif text-xl leading-tight">{r.wine}</span>
+                <span className="sb-title text-[15px] leading-tight">{r.wine}</span>
                 <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
                   {r.stars !== null ? <Stars value={r.stars} size="sm" /> : <span className="text-primary">{t('Not tasted yet')}</span>}
                   {r.details}
@@ -363,7 +363,7 @@ export function Journal({ journal, bottles, friendJournals, canShare, profile, o
                 <ul className="flex flex-col divide-y border-y">
                   {theirs.entries.map((e) => (
                     <li key={e.id} className="flex flex-col gap-1 py-3">
-                      <span className="font-serif text-lg leading-tight">{[e.wine, e.vintage].filter(Boolean).join(' ')}</span>
+                      <span className="sb-title text-sm leading-tight">{[e.wine, e.vintage].filter(Boolean).join(' ')}</span>
                       <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
                         {starsOf(e) !== null ? <Stars value={starsOf(e)} size="sm" /> : <span>{t('Saved for later')}</span>}
                         {[t(e.type), t(e.region), e.place].filter(Boolean).join(' · ')}

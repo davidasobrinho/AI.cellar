@@ -56,6 +56,8 @@ const PT: Record<string, string> = {
   'Loading your cellar…': 'A carregar a tua garrafeira…',
   Problem: 'Problema',
   Close: 'Fechar',
+  'Dark mode': 'Modo escuro',
+  'Light mode': 'Modo claro',
   'Name at the top of your app, for example CAVE MARIA': 'Nome no topo da tua app, por exemplo CAVE MARIA',
   'Name of the new cellar': 'Nome da nova garrafeira',
   Language: 'Idioma',

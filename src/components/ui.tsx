@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 import { clsx } from 'clsx'
 import type { ClassValue } from 'clsx'
-import { X } from 'lucide-react'
+import { Moon, Sun, X } from 'lucide-react'
 import { twMerge } from 'tailwind-merge'
 import { t } from '../lib/i18n'
 
@@ -33,6 +33,32 @@ export function Button({
       )}
       {...props}
     />
+  )
+}
+
+// Light and dark: follows the phone until switched, then remembers the choice on this device.
+export function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+  function toggle() {
+    const next = dark ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'dark' ? '#161718' : '#ffffff')
+    try {
+      localStorage.setItem('sobri-theme', next)
+    } catch {
+      // Private browsing: the switch still works for this visit.
+    }
+    setDark(!dark)
+  }
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="flex size-10 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {dark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+      <span className="sr-only">{dark ? t('Light mode') : t('Dark mode')}</span>
+    </button>
   )
 }
 
@@ -76,7 +102,7 @@ export function SheetHeader({ eyebrow, title, children }: { eyebrow: string; tit
   return (
     <header className="flex flex-col gap-2 border-b p-6 pr-14">
       <span className="text-xs uppercase tracking-widest text-muted-foreground">{eyebrow}</span>
-      <h2 className="font-serif text-3xl font-light leading-tight text-balance">{title}</h2>
+      <h2 className="sb-title text-xl leading-tight text-balance">{title}</h2>
       {children && <p className="text-sm text-muted-foreground">{children}</p>}
     </header>
   )
